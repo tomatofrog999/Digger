@@ -1,22 +1,30 @@
 import pygame
 import sys
-import math
 import random as r
 
 def clamp(val, min_val, max_val):
 	return min(max(val, min_val), max_val)
 
+pygame.init()
+
 # Constant
-WIDTH = 800
-HEIGHT = 600
+FULL_SCREEN = False
+screen_info = pygame.display.Info()
+WIDTH = screen_info.current_w if FULL_SCREEN else 800
+HEIGHT = screen_info.current_h if FULL_SCREEN else 600
+WIDTH_HALFED = WIDTH // 2
+HEIGHT_HALFED = HEIGHT // 2
+CAM_Y_UNDERGROUND_OFFSET = HEIGHT // 8
 FPS = 60
 TARGET_TICK = FPS // 4
 
 GRAVITY_SPEED = 10
-MAX_VELOCITY = 1000
+MAX_DOWN_SPEED = 1000
+MAX_UP_SPEED = 500
 
-BLOCK_WIDTH = 128
+BLOCK_WIDTH = 64
 BLOCK1_BREAK_TIME = 0.2 * FPS # in tick
+BLOCK2_BREAK_TIME = 0.5 * FPS
 
 MINE_POS_X, MINE_POS_Y = -100, 400
 
@@ -29,16 +37,15 @@ PLAYER_WALL_KICK_SPEED = 600.0
 PLAYER_WALL_KICK_VELOCITY_APPLIED_TICK = 0.2 * FPS
 PLAYER_WALL_SLIDE_SPEED = GRAVITY_SPEED + 7
 PLAYER_WALL_SLIDE_SPEED_THRESHOLD = 200
-PLAYER_WIDTH = 50
-PLAYER_HEIGHT = 100
+PLAYER_WIDTH = 25
+PLAYER_HEIGHT = 50
 PLAYER_BREAK_BLOCK_DISTANCE_X = 2 * BLOCK_WIDTH + PLAYER_WIDTH // 2
 PLAYER_BREAK_BLOCK_DISTANCE_Y = 2 * BLOCK_WIDTH + PLAYER_HEIGHT // 2
 TICK_TILL_ENABLE_SLIDE = 0.2 * FPS
 
 CAM_MAX_SPEED = 900.0
-CAM_SPEED_SCALE = 5.0 # per distance(pixel)
-CAM_MIN_DISTANCE = 5
-
+CAM_SPEED_SCALE = 4.0 # per distance(pixel)
+CAM_MIN_DISTANCE = 0
 
 class BlockSprite(pygame.sprite.Sprite):
 	tick_till_break = 1
@@ -65,8 +72,6 @@ class PlayerSprite(pygame.sprite.Sprite):
 		self.rect.center = pos
 
 # Initialization
-pygame.init()
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Mining Game")
 clock = pygame.time.Clock()
@@ -110,43 +115,47 @@ while running:
 			running = False
 		elif event.type == pygame.MOUSEMOTION:
 			mouse_x, mouse_y = event.pos
-	
+		elif event.type == pygame.KEYDOWN:
+			if event.key == pygame.K_ESCAPE:
+				running = False
+
 	screen.fill("black")
 
 	keys = pygame.key.get_pressed()
 	mouses = pygame.mouse.get_pressed()
 
 	# Player movement
-	if applied_addition_velocity_tick == 0:
+	if applied_addition_velocity_tick <= 0:
 		addition_velocity_x = 0
-	can_wall_sliding = touch_wall_tick >= TICK_TILL_ENABLE_SLIDE and airtime_tick > TICK_TILL_ENABLE_SLIDE
-	if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+	else:
+		applied_addition_velocity_tick -= 1
+
+	if keys[pygame.K_a]:
 		player_velocity_x = -PLAYER_SPEED
 
-	if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+	if keys[pygame.K_d]:
 		player_velocity_x = PLAYER_SPEED
 
-	if not (keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):
+	if not (keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_RIGHT]):
 		player_velocity_x = 0
 
-	if (keys[pygame.K_w] or keys[pygame.K_SPACE] or keys[pygame.K_UP]) and (airtime_tick <= 1 or can_wall_sliding):
-		if can_wall_sliding:
+	can_wall_sliding = touch_wall_tick >= TICK_TILL_ENABLE_SLIDE and airtime_tick > TICK_TILL_ENABLE_SLIDE
+	if (keys[pygame.K_w] or keys[pygame.K_SPACE]) and (airtime_tick <= 0 or can_wall_sliding):
+		if can_wall_sliding and touch_wall_side != 0:
 			if touch_wall_side == 1:
 				# touch wall side left kick right
 				addition_velocity_x = -PLAYER_WALL_KICK_SPEED
-				touch_wall_tick = 0
-				applied_addition_velocity_tick = PLAYER_WALL_KICK_VELOCITY_APPLIED_TICK
-			elif touch_wall_side == 2:
+			else:
 				# touch wall side right kick left
 				addition_velocity_x = PLAYER_WALL_KICK_SPEED
-				touch_wall_tick = 0 
-				applied_addition_velocity_tick = PLAYER_WALL_KICK_VELOCITY_APPLIED_TICK
+			touch_wall_tick = 0
+			applied_addition_velocity_tick = PLAYER_WALL_KICK_VELOCITY_APPLIED_TICK
 		player_velocity_y -= PLAYER_JUMP_SPEED
 
 	if can_wall_sliding and player_velocity_y > PLAYER_WALL_SLIDE_SPEED_THRESHOLD:
 		player_velocity_y -= PLAYER_WALL_SLIDE_SPEED
 	player_velocity_y += GRAVITY_SPEED
-	player_velocity_y = clamp(player_velocity_y, -MAX_VELOCITY, MAX_VELOCITY)
+	player_velocity_y = clamp(player_velocity_y, -MAX_UP_SPEED, MAX_DOWN_SPEED)
 
 
 	# Position update and collision check
@@ -167,30 +176,39 @@ while running:
 			player_velocity_x = 0
 	if not touch_wall:
 		touch_wall_tick = 0
-	touch_wall_tick += touch_wall
+	else:
+		touch_wall_tick += 1
 
+	touch_ground = False
 	player.rect.y += player_velocity_y * dt
 	for block in block_group:
 		is_collide = pygame.Rect.colliderect(player.rect , block.rect)
 		if is_collide:
 			if player_velocity_y > 0:
 				player.rect.bottom = block.rect.top
-				airtime_tick = 0
+				touch_ground = is_collide if not touch_ground else True
 			elif player_velocity_y < 0:
 				player.rect.top = block.rect.bottom
 			player_velocity_y = 0
+	if not touch_ground:
+		airtime_tick += 1
+	else:
+		airtime_tick = 0
 
 	# Break block
-	if (mouses[0] or mouses[1]) and abs((mouse_x + cam_x) - player.rect.centerx) < PLAYER_BREAK_BLOCK_DISTANCE_X and abs((mouse_y + cam_y) - player.rect.centery) < PLAYER_BREAK_BLOCK_DISTANCE_Y:
+	cam_offset_x = -cam_x + WIDTH_HALFED
+	cam_offset_y = -cam_y + HEIGHT_HALFED
+	if (mouses[0] or mouses[2]) and abs((mouse_x - cam_offset_x) - player.rect.centerx) < PLAYER_BREAK_BLOCK_DISTANCE_X and abs((mouse_y - cam_offset_y) - player.rect.centery) < PLAYER_BREAK_BLOCK_DISTANCE_Y:
 		for block in block_group:
-			if block.rect.collidepoint((mouse_x + cam_x, mouse_y + cam_y)):
+			if block.rect.collidepoint((mouse_x - cam_offset_x, mouse_y - cam_offset_y)):
 				block.current_break_tick += player_break_speed * player_break_speed_modifier
 				if block.current_break_tick >= block.tick_till_break:
 					block.kill()
 
 	# Camera Movement
-	cam_displacement_x = player.rect.x - (cam_x + WIDTH / 2)
-	cam_displacement_y = player.rect.y - (cam_y + HEIGHT / 2)
+	cam_displacement_x = player.rect.x - cam_x
+	addition_height = CAM_Y_UNDERGROUND_OFFSET if player.rect.bottom >= MINE_POS_Y else 0
+	cam_displacement_y = (player.rect.y + addition_height) - cam_y
 	cam_distance_x = abs(cam_displacement_x)
 	cam_distance_y = abs(cam_displacement_y)
 	if cam_displacement_x > CAM_MIN_DISTANCE:
@@ -206,24 +224,21 @@ while running:
 
 	# Drawing
 	for block in block_group:
-		screen.blit(block.image, (round(block.rect.x - cam_x), round(block.rect.y - cam_y)))
+		screen.blit(block.image, (round(block.rect.x + cam_offset_x), round(block.rect.y + cam_offset_y)))
 	
-	screen.blit(player.image, (round(player.rect.x - cam_x), round(player.rect.y - cam_y)))
+	screen.blit(player.image, (round(player.rect.x + cam_offset_x), round(player.rect.y + cam_offset_y)))
 
 	pygame.display.flip()
 
 
 	# Debug
 	if tick >= TARGET_TICK:
-		print(f"FPS: {(FPS / 4) / time_passed if time_passed > 0 else 0:.2f} at:{airtime_tick} twt:{touch_wall_tick} advt:{applied_addition_velocity_tick} av:{addition_velocity_x}     ", end="\r")
+		print(f"FPS: {(TARGET_TICK) / time_passed if time_passed > 0 else 0:.2f} player:{player.rect.topleft} mouse:{mouse_x + cam_x - WIDTH_HALFED, mouse_y + cam_y - HEIGHT_HALFED}     ", end="\r")
 		tick = 0
 		time_passed = 0
 
 	
 	tick += 1
-	airtime_tick += 1
-	if applied_addition_velocity_tick > 0:
-		applied_addition_velocity_tick -= 1
 	dt = clock.tick(FPS) / 1000
 	time_passed += dt
 
