@@ -1,0 +1,4 @@
+pydub
+audioop-lts
+numpy
+matplotlib
