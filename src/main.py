@@ -1,476 +1,282 @@
 import pygame
 import pygwidgets
 import sys
-import random as r
-from enum import Enum
-
-class AnimationState(Enum):
-	IDLE = 0
-	WALK = 1
-
-class TouchWallState(Enum):
-	NOT_TOUCH_WALL = 0
-	TOUCH_WALL_RIGHT = 1
-	TOUCH_WALL_LEFT = 2
-
-class BlockSprite(pygame.sprite.Sprite):
-	max_health : float = 0
-	damage_taken : float = 0
-
-	def __init__(self, surface : pygame.Surface, topleft : tuple[int, int], max_health : float):
-		super().__init__()
-
-		self.image = surface
-		
-		self.rect : pygame.Rect = self.image.get_rect()
-		self.rect.topleft = topleft
-
-		self.max_health = max_health
-
-	def kill(self):
-		super().kill()
-
-class PlayerSprite(pygame.sprite.Sprite):
-	ANIMATION_IDLE_START_INDEX = 0
-	ANIMATION_IDLE_STEP = 4
-	ANIMATION_WALK_START_INDEX = 4
-	ANIMATION_WALK_STEP = 6
-	ANIMATION_COLLDOWN_MS = 150 # ms
-	walk_surface : tuple[pygame.Surface, ...] = None
-	idle_surface : tuple[pygame.Surface, ...] = None
-	time_since_update_animation : int = 0
-	animation_frame : int = 0
-	last_animation_state : AnimationState = AnimationState.IDLE
-
-	max_health = 3
-	health = 3
-	max_energy = 100
-	energy = 100
-	def __init__(self, animation_surface : pygame.Surface, topleft : tuple[int, int], size_per_image : tuple[int, int], surface_scale : int, hitblock_size : tuple[int, int]):
-		super().__init__()
-		self.set_surface(animation_surface, topleft, size_per_image, surface_scale, hitblock_size)
-
-	def set_surface(self, animation_surface : pygame.Surface, topleft : tuple[int, int], size_per_image : tuple[int, int], surface_scale : int, hitblock_size : tuple[int, int]):
-		self.rect : pygame.Rect = pygame.Rect(topleft, hitblock_size)
-		self.init_animation(animation_surface, size_per_image, surface_scale)
-		self.image = self.get_surface_from_state(AnimationState.IDLE)[0]
-
-	def get_surface_from_state(self, state : AnimationState) -> pygame.Surface:
-		if state == AnimationState.IDLE:
-			return self.idle_surface
-		elif state == AnimationState.WALK:
-			return self.walk_surface
-		return None
-	
-	def draw(self, screen : pygame.Surface, topleft : tuple[int, int], facing_left : bool, animation_state : AnimationState):
-		current_time = pygame.time.get_ticks()
-
-		if animation_state != self.last_animation_state:
-			self.last_animation_state = animation_state
-			self.animation_frame = 0
-			self.time_since_update_animation = current_time	
-
-		animation = self.get_surface_from_state(animation_state)
-		if current_time >= self.time_since_update_animation + PlayerSprite.ANIMATION_COLLDOWN_MS:
-			self.time_since_update_animation = current_time
-			self.animation_frame = (self.animation_frame + 1) if self.animation_frame + 1 < len(animation) else 0
-
-		surf = animation[self.animation_frame]
-
-		if facing_left:
-			surf = pygame.transform.flip(surf, True, False)
-
-		screen.blit(surf, topleft)
-
-	def init_animation(self, animation_surface : pygame.Surface, size_per_image : tuple[int, int], surface_scale : int):
-		temp_list = []
-		for i in range(PlayerSprite.ANIMATION_IDLE_START_INDEX, PlayerSprite.ANIMATION_IDLE_STEP):
-			temp_list.append(self.create_animation_surface(animation_surface, i, size_per_image, surface_scale))
-		self.idle_surface = tuple(temp_list)
-
-		temp_list = []
-		for i in range(PlayerSprite.ANIMATION_WALK_START_INDEX, PlayerSprite.ANIMATION_WALK_STEP):
-			temp_list.append(self.create_animation_surface(animation_surface, i, size_per_image, surface_scale))
-		self.walk_surface = tuple(temp_list)
-
-
-	def create_animation_surface(self, animation_surface : pygame.Surface, animation_number : int, size_per_image : tuple[int, int], scale : int) -> pygame.Surface:
-		width, height = size_per_image
-		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
-		image.blit(animation_surface, (0,0) ,((animation_number * width, 0) ,size_per_image))
-		image = pygame.transform.scale(image, (width * scale, height * scale))
-		return image
-
-class BlockData:
-	surface : pygame.Surface = None
-	max_health : float = 1
-	spawn_weight : float = 0
-
-	def __init__(self, surface : pygame.Surface, max_health : float, spawn_weight : float):
-		self.surface = surface
-		self.max_health = max_health
-		self.spawn_weight = spawn_weight
-
-class LayerData:
-	end_layer : int = 0
-	block_tuple : tuple[BlockData, ...] = None
-	def __init__(self, end_layer : int, block_tuple : tuple[BlockData, ...]):
-		self.end_layer = end_layer
-		self.block_tuple = block_tuple
-		combined_weight = 0
-		for x in self.block_tuple:
-			combined_weight += x.spawn_weight
-
-		if round(combined_weight, 4) != 1.0000:
-			raise ValueError("Combined weight of BlockData in BlockLayerData != 1")
-
-	def get_random_block(self) -> BlockData:
-		temp_random = r.random()
-		length = len(self.block_tuple)
-		combined_weight = 0
-		for i in range(length):
-			current_weight = self.block_tuple[i].spawn_weight
-			if round(combined_weight + current_weight, 4) > temp_random:
-				return self.block_tuple[i]
-			combined_weight = round(combined_weight + current_weight, 4)
-
-		if temp_random == 1:
-			return self.block_tuple[r.randint(0, length - 1)]
-
-		raise RuntimeError(f"Impossible state")
-
-class MapData:
-	layer_tuple : tuple[LayerData, ...] = None
-	def __init__(self, layer_tuple : tuple[LayerData, ...]):
-		self.layer_tuple = sorted(layer_tuple, key=(lambda x: x.end_layer))
-
-	def create_sprite_group(self, width : int, height : int, map_position : tuple[int, int]) -> pygame.sprite.Group:
-		block_group = pygame.sprite.Group()
-		block_x, block_y = 0, 0
-		layer_index = 0
-		layer = self.layer_tuple[layer_index]
-		length = len(self.layer_tuple)
-		for i in range(height):
-			if i >= layer.end_layer:
-				layer_index += 1
-				if layer_index >= length:
-					break
-				layer = self.layer_tuple[layer_index]
-			block_x = 0
-			for j in range(width):
-				block_data = layer.get_random_block()
-				block = BlockSprite(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health)
-				block_group.add(block)
-				block_x += block_data.surface.size[0]
-			block_y += block_data.surface.size[1]
-		return block_group
-
-	
-def clamp(val : int | float, min_val : int | float, max_val : int | float) -> int | float:
-	return min(max(val, min_val), max_val)
-
-def extract_number_sign(value : int | float):
-	if value == 0: 
-		return 0
-	return 1 if value > 0 else -1
-
-def in_range(value : int | float, min_val : int | float, max_val : int | float) -> bool:
-	return (min_val < value < max_val)
+import math
+import os
+import game_essential as game
 
 pygame.init()
+pygame.mixer.init()
+
+CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
+BASE_PATH = os.path.dirname(CURRENT_PATH)
+ASSET_PATH = os.path.join(BASE_PATH, "assets")
+IMAGE_PATH = os.path.join(ASSET_PATH, "images")
+MUSIC_PATH = os.path.join(ASSET_PATH, "musics")
 
 # Constant
 FULL_SCREEN = False
 screen_info = pygame.display.Info()
-WIDTH = screen_info.current_w if FULL_SCREEN else 800
-HEIGHT = screen_info.current_h if FULL_SCREEN else 600
-WIDTH_HALFED = WIDTH // 2
-HEIGHT_HALFED = HEIGHT // 2
-CAM_Y_UNDERGROUND_OFFSET = HEIGHT // 8
+ORIGINAL_SCREEN_WIDTH = 800
+ORIGINAL_SCREEN_HEIGHT = 600
+SCREEN_WIDTH = screen_info.current_w if FULL_SCREEN else ORIGINAL_SCREEN_WIDTH
+SCREEN_HEIGHT = screen_info.current_h if FULL_SCREEN else ORIGINAL_SCREEN_HEIGHT
+SCREEN_WIDTH_HALFED = SCREEN_WIDTH // 2
+SCREEN_HEIGHT_HALFED = SCREEN_HEIGHT // 2
+CAM_Y_UNDERGROUND_OFFSET = SCREEN_HEIGHT // 8
 FPS = 60
 TARGET_TICK = FPS // 4
 
-GRAVITY_ACCERELATION = 10.0
-
-BLOCK_WIDTH = 64
 BLOCK_PER_WIDTH = 15
 BLOCK_PER_HEIGHT = 50
 MINE_POS = (-100, 400)
 
-# Layer 1
-BLOCK1_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK1_SURFACE.fill("brown3")
-BLOCK1_DATA = BlockData(BLOCK1_SURFACE, 3.0, 0.8)
+BLOCK_WIDTH = 64
+BLOCK_HEIGHT = 64
 
-BLOCK2_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK2_SURFACE.fill("chocolate1")
-BLOCK2_DATA = BlockData(BLOCK2_SURFACE, 6.0, 0.2)
+GRAVITY_ACCERELATION = 640
 
-LAYER1_DATA = LayerData(10, (BLOCK1_DATA, BLOCK2_DATA))
-
-
-# Layer 2
-BLOCK3_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK3_SURFACE.fill("red")
-BLOCK3_DATA = BlockData(BLOCK3_SURFACE, 10.0, 0.6)
-
-BLOCK4_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK4_SURFACE.fill("pink")
-BLOCK4_DATA = BlockData(BLOCK4_SURFACE, 15.0, 0.4)
-
-LAYER2_DATA = LayerData(25, (BLOCK3_DATA, BLOCK4_DATA))
-
-# Layer 3
-BLOCK5_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK5_SURFACE.fill("darkorchid1")
-BLOCK5_DATA = BlockData(BLOCK5_SURFACE, 20.0, 0.15)
-
-BLOCK6_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK6_SURFACE.fill("darkmagenta")
-BLOCK6_DATA = BlockData(BLOCK6_SURFACE, 35.0, 0.8)
-
-BLOCK7_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
-BLOCK7_SURFACE.fill("plum2")
-BLOCK7_DATA = BlockData(BLOCK7_SURFACE, 40.0, 0.05)
-
-LAYER3_DATA = LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA))
-
-
-MAP1_DATA = MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA))
-
-PLAYER_WALK_SPEED = 250.0
+PLAYER_WALK_ACCERELATION = 500.0
+PLAYER_MAX_WALK_SPEED = 300.0
 PLAYER_MAX_SIDE_SPEED = 1200.0
 PLAYER_MAX_DOWN_SPEED = 1200.0
 PLAYER_MAX_UP_SPEED = 500.0
-PLAYER_SLOW_DOWN_SPEED = 100.0
-PLAYER_JUMP_SPEED = 400.0
-PLAYER_WALL_KICK_SPEED = 1000.0
-PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK = 50.0
-PLAYER_WALL_SLIDE_ACCERELATION = GRAVITY_ACCERELATION + 7
-PLAYER_WALL_SLIDE_SPEED_THRESHOLD = 200
+PLAYER_SLOW_DOWN_ACCERELATION = 400.0
+# # v^2 = u^2 + 2as u = sqrt(2as)
+# can jump up 2 block 
+# s = block height * 2
+PLAYER_JUMP_SPEED = math.sqrt(2 * GRAVITY_ACCERELATION * ((BLOCK_HEIGHT + 5) * 2))
+PLAYER_WALL_KICK_SPEED = 150.0
+PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK = 200.0
+PLAYER_WALL_SLIDE_ACCERELATION = GRAVITY_ACCERELATION * 3 / 2
+PLAYER_WALL_SLIDE_SPEED_THRESHOLD = 100.0
+
+PLAYER_BREAK_BLOCK_DISTANCE = 3 # block
+PLAYER_TICK_TILL_ENABLE_SLIDE = 0.1 * FPS
+
 PLAYER_HITBLOCK_SIZE = (25, 50)
-PLAYER_BREAK_BLOCK_DISTANCE_X = BLOCK_WIDTH // 2 + PLAYER_HITBLOCK_SIZE[0] // 2
-PLAYER_BREAK_BLOCK_DISTANCE_Y = BLOCK_WIDTH // 2 + PLAYER_HITBLOCK_SIZE[1] // 2
-PLAYER_BREAK_BLOCK_DISTANCE = 2 # block
-TICK_TILL_ENABLE_SLIDE = 0.1 * FPS
 PLAYER_SURFACE_SIZE = (24, 24)
 PLAYER_SURFACE_SCALE = 3
 PLAYER_IMAGE_OFFSET = (-24, -15)
 
-CAM_MAX_SPEED = 900.0
+CAM_MAX_SPEED = 1000.0
 CAM_SPEED_SCALE = 4.0 # per distance(pixel)
-CAM_MIN_DISTANCE = 10
+CAM_MIN_DISTANCE = 10.0
+
+RHYTHM_ERROR_MARGIN_MS = 50
+# for testing
+MUSIC_START_TIME_S = 0
+MUSIC_START_TIME_MS = MUSIC_START_TIME_S * 1000
 
 cam_x, cam_y = 0.0, 0.0
+def main():
+	global cam_x, cam_y
+	screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+	pygame.display.set_caption("Digger Game")
+	clock = pygame.time.Clock()
 
-player_break_damage = 1.0 # block damage per sec
-player_break_damage_modifier = 1.0
+	# Layer Constant
+	SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "tiles_spritesheet.png"), True)
+	# Layer 1
+	BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_PATH, "tiles_spritesheet.txt"), "grassCenter")
+	BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], 1, False)
+	BLOCK1_DATA = game.BlockData(BLOCK1_SURFACE, 3.0, 0.8)
 
-player_velocity_x = 0.0
-player_velocity_y = 0.0
+	BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_PATH, "tiles_spritesheet.txt"), "stoneCenter")
+	BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], 1, False)
+	BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 
-# Initialization
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Mining Game")
-clock = pygame.time.Clock()
+	LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA))
 
-# Create Player
-# player = PlayerSprite((150, 50, 0), (PLAYER_WIDTH, PLAYER_HEIGHT), (0, 0))
-player_surface = pygame.image.load('doux.png').convert_alpha()
-player = PlayerSprite(player_surface, (0, 0), PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE, PLAYER_HITBLOCK_SIZE)
 
-# Create block group
-block_group = MAP1_DATA.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS)
+	# Layer 2
+	BLOCK3_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+	BLOCK3_SURFACE.fill("red")
+	BLOCK3_DATA = game.BlockData(BLOCK3_SURFACE, 10.0, 0.6)
 
-print("size:", len(block_group))
+	BLOCK4_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+	BLOCK4_SURFACE.fill("pink")
+	BLOCK4_DATA = game.BlockData(BLOCK4_SURFACE, 15.0, 0.4)
 
-facing_left = False
+	LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA))
 
-dt = 0
-tick = 0
-airtime_tick = 0
-touch_wall_tick = 0
-time_passed = 0 # for fps debug
-touch_wall_side = 0 # 0 = not, 1 = touch wall right, 2 = touch wall left
-running = True
-while running:
-	space_pressed = False
-	j_pressed = False
-	k_pressed = False
-	for event in pygame.event.get():
-		if event.type == pygame.QUIT:
-			running = False
-		elif event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_ESCAPE:
+	# Layer 3
+	BLOCK5_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+	BLOCK5_SURFACE.fill("darkorchid1")
+	BLOCK5_DATA = game.BlockData(BLOCK5_SURFACE, 20.0, 0.15)
+
+	BLOCK6_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+	BLOCK6_SURFACE.fill("darkmagenta")
+	BLOCK6_DATA = game.BlockData(BLOCK6_SURFACE, 35.0, 0.8)
+
+	BLOCK7_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+	BLOCK7_SURFACE.fill("plum2")
+	BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.05)
+
+	LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA))
+
+
+	MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA))
+
+
+	# Create block group
+	block_group = MAP1_DATA.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS)
+
+	# Create player and animation
+	animation_dict = {
+		game.Player.AnimationState.IDLE: game.Player.AnimationData(0, 4, 150, True, 0),
+		game.Player.AnimationState.WALK: game.Player.AnimationData(4, 6, 150, True, 0),
+		game.Player.AnimationState.JUMP: game.Player.AnimationData(10, 4, 300, False, 3),
+		game.Player.AnimationState.WALL_JUMP: game.Player.AnimationData(10, 4, 300, False, 3),
+		game.Player.AnimationState.WALL_SLIDE: game.Player.AnimationData(5, 1, 200, True, 2),
+		game.Player.AnimationState.FALL: game.Player.AnimationData(11, 3, 200, True, 1),
+		game.Player.AnimationState.DIG: game.Player.AnimationData(17, 3, 300, False, 3)
+	}
+	player_surface = game.load_picture(os.path.join(IMAGE_PATH, "doux.png"), True)
+	player = game.Player((0, 0), PLAYER_HITBLOCK_SIZE).init_screen(screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
+			.init_mass(1).init_breakable_group(block_group).init_energy(100).init_health(3).init_animation_data(animation_dict) \
+			.init_walk_constant(PLAYER_WALK_ACCERELATION, PLAYER_SLOW_DOWN_ACCERELATION, PLAYER_MAX_WALK_SPEED) \
+			.init_max_speed_constant(PLAYER_MAX_SIDE_SPEED, PLAYER_MAX_DOWN_SPEED, PLAYER_MAX_UP_SPEED) \
+			.init_jump_slide_constant(PLAYER_JUMP_SPEED, PLAYER_WALL_KICK_SPEED, PLAYER_WALL_SLIDE_ACCERELATION, PLAYER_WALL_SLIDE_SPEED_THRESHOLD, PLAYER_TICK_TILL_ENABLE_SLIDE) \
+			.init_digging_constant(PLAYER_BREAK_BLOCK_DISTANCE, PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK, BLOCK_WIDTH, BLOCK_HEIGHT) \
+			.init_gravity_constant(GRAVITY_ACCERELATION).init_break_damage_constant(1.0, 1.0)
+	player.set_surface(player_surface, PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE)
+	player.check_initialization()
+
+	rhythm_time = []
+	refined_rhythm_time = [] # (start, end, size)
+	with open(os.path.join(MUSIC_PATH, "loudness_log.txt")) as f:
+		for line in f:
+			line = line.strip()
+			if (line != "" and line[0] == "#") or line == "":
+				continue
+			previous_rhythm = refined_rhythm_time[len(refined_rhythm_time) - 1] if len(refined_rhythm_time) > 0 else None
+			current_rhythm_bound = float(line)
+
+			# continuous front
+			if previous_rhythm != None and previous_rhythm[1] > current_rhythm_bound - RHYTHM_ERROR_MARGIN_MS:
+				lower = previous_rhythm[0]
+				upper = current_rhythm_bound + RHYTHM_ERROR_MARGIN_MS
+				refined_rhythm_time[len(refined_rhythm_time) - 1] = (lower, upper, upper - lower)
+			else:
+				lower = current_rhythm_bound - RHYTHM_ERROR_MARGIN_MS
+				upper = current_rhythm_bound + RHYTHM_ERROR_MARGIN_MS
+				refined_rhythm_time.append((lower, upper, upper - lower))
+
+	SHOWN_RHYTHM_WIDTH_MS = 1500
+	rhythm_surface = []
+	for rhythm in refined_rhythm_time:
+		test_surf = pygame.Surface((rhythm[2] / SHOWN_RHYTHM_WIDTH_MS * SCREEN_WIDTH, 30))
+		test_surf.fill("purple")
+		rhythm_surface.append(test_surf)
+	
+	pygame.mixer.music.load(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"))
+	pygame.mixer.music.set_volume(0.7)
+	pygame.mixer.music.play(loops=0, start=MUSIC_START_TIME_S)
+
+	rhythm_index = 0
+	WRONG_PRESS_COOLDOWN_MS = 400
+	wrong_press_next_reset = 0
+
+	dt = 0
+	tick = 0
+	time_passed = 0 # for fps debug
+	running = True
+	while running:
+		events = pygame.event.get()
+		pressed_dig = False
+		for event in events:
+			if event.type == pygame.QUIT:
 				running = False
-			if event.key == pygame.K_SPACE:
-				space_pressed = True
-			if event.key == pygame.K_j:
-				j_pressed = True
-			if event.key == pygame.K_k:
-				k_pressed = True
+			elif event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					running = False
+				if event.key in (pygame.K_j, pygame.K_k):
+					pressed_dig = True
 
-	screen.fill("black")
+		screen.fill("black")
 
-	keys = pygame.key.get_pressed()
-	mouses = pygame.mouse.get_pressed()
-	a_pressed = keys[pygame.K_a]
-	d_pressed = keys[pygame.K_d]
-	w_pressed = keys[pygame.K_w]
-	s_pressed = keys[pygame.K_s]
-	
-	# Player movement
-	if (a_pressed or d_pressed) and not (a_pressed and d_pressed):
-		if a_pressed:
-			facing_left = True
-		if d_pressed:
-			facing_left = False
-		if a_pressed and player_velocity_x > -PLAYER_WALK_SPEED:
-			player_velocity_x -= PLAYER_WALK_SPEED
-		if d_pressed and player_velocity_x < PLAYER_WALK_SPEED:
-			player_velocity_x += PLAYER_WALK_SPEED
-	elif player_velocity_x != 0:
-		player_velocity_x -= extract_number_sign(player_velocity_x) * min(abs(player_velocity_x), PLAYER_SLOW_DOWN_SPEED)
-	player_velocity_x = clamp(player_velocity_x, -PLAYER_MAX_SIDE_SPEED, PLAYER_MAX_SIDE_SPEED)
+		keys = pygame.key.get_pressed()
 
-	can_wall_sliding = touch_wall_tick >= TICK_TILL_ENABLE_SLIDE and airtime_tick > TICK_TILL_ENABLE_SLIDE
-	if space_pressed and (airtime_tick <= 3 or can_wall_sliding):
-		if can_wall_sliding and touch_wall_side != TouchWallState.NOT_TOUCH_WALL:
-			if touch_wall_side == TouchWallState.TOUCH_WALL_LEFT:
-				player_velocity_x += PLAYER_WALL_KICK_SPEED
+		current_music_time = MUSIC_START_TIME_MS + pygame.mixer.music.get_pos()
+		current_rhythm_bound =  refined_rhythm_time[rhythm_index]
+
+		while current_music_time > current_rhythm_bound[1]:
+			player.break_damage_modifier = 1
+			rhythm_surface[rhythm_index].fill("red")
+			if rhythm_index + 1 < len(rhythm_surface):
+				rhythm_index += 1
 			else:
-				player_velocity_x -= PLAYER_WALL_KICK_SPEED
-			touch_wall_tick = 0
-		player_velocity_y -= PLAYER_JUMP_SPEED
-
-	if can_wall_sliding and player_velocity_y > PLAYER_WALL_SLIDE_SPEED_THRESHOLD:
-		player_velocity_y -= PLAYER_WALL_SLIDE_ACCERELATION
-
-	player_velocity_y += GRAVITY_ACCERELATION
-	player_velocity_y = clamp(player_velocity_y, -PLAYER_MAX_UP_SPEED, PLAYER_MAX_DOWN_SPEED)
-
-
-	# Position update and collision check
-	touch_wall_side = TouchWallState.NOT_TOUCH_WALL
-	player.rect.x += round(player_velocity_x * dt)
-	block : BlockSprite
-	for block in block_group:
-		if pygame.Rect.colliderect(player.rect , block.rect):
-			if player_velocity_x > 0:
-				player.rect.right = block.rect.left
-				touch_wall_side = TouchWallState.TOUCH_WALL_RIGHT
-			else:
-				player.rect.left = block.rect.right
-				touch_wall_side = TouchWallState.TOUCH_WALL_LEFT
-			player_velocity_x = 0
-			break
-	if touch_wall_side == TouchWallState.NOT_TOUCH_WALL:
-		touch_wall_tick = 0
-	else:
-		touch_wall_tick += 1
-
-	touch_ground = False
-	player.rect.y += round(player_velocity_y * dt)
-	for block in block_group:
-		if pygame.Rect.colliderect(player.rect , block.rect):
-			if player_velocity_y > 0:
-				player.rect.bottom = block.rect.top
-				touch_ground = True
-			else:
-				player.rect.top = block.rect.bottom
-			player_velocity_y = 0
-			break
-	if touch_ground:
-		airtime_tick = 0
-	else:
-		airtime_tick += 1
-
-	# Break block
-	if (j_pressed or k_pressed) and not ((w_pressed or s_pressed) and (a_pressed or d_pressed)):
-		digging_offset_x = 0
-		digging_offset_y = 0
-		if w_pressed or s_pressed or a_pressed or d_pressed:
-			if w_pressed:
-				digging_offset_y -= PLAYER_BREAK_BLOCK_DISTANCE_Y
-			if s_pressed:
-				digging_offset_y += PLAYER_BREAK_BLOCK_DISTANCE_Y
+				rhythm_index = 0
+				pygame.mixer.music.stop()
+				pygame.mixer.music.play(loops=-1, start=MUSIC_START_TIME_S)
+				current_music_time = MUSIC_START_TIME_MS + pygame.mixer.music.get_pos()
+			current_rhythm_bound = refined_rhythm_time[rhythm_index]
 		
-			if a_pressed:
-				digging_offset_x -= PLAYER_BREAK_BLOCK_DISTANCE_X
-			if d_pressed:
-				digging_offset_x += PLAYER_BREAK_BLOCK_DISTANCE_X
+		if pressed_dig and game.in_range(current_music_time, current_rhythm_bound[0], current_rhythm_bound[1]) and current_music_time > wrong_press_next_reset:
+			rhythm_surface[rhythm_index].fill("green")
+			player.break_damage_modifier = 10
+			rhythm_index += 1
 
-		is_collide = False
-		for _ in range(PLAYER_BREAK_BLOCK_DISTANCE):
-			for block in block_group:
-				is_collide = block.rect.collidepoint((player.rect.x + digging_offset_x, player.rect.y + digging_offset_y))
-				if is_collide:
-					block.damage_taken += player_break_damage * player_break_damage_modifier
-					if block.damage_taken >= block.max_health:
-						if digging_offset_x != 0:
-							player_velocity_x += extract_number_sign(digging_offset_x) * PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK
-						if digging_offset_y > 0:
-							player_velocity_y += PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK
-						block.kill()
-					break
-			if is_collide:
-				break
-			if digging_offset_x != 0 and digging_offset_y == 0:
-				digging_offset_x += extract_number_sign(digging_offset_x) * BLOCK_WIDTH
-			elif digging_offset_y != 0 and digging_offset_x == 0:
-				digging_offset_y += extract_number_sign(digging_offset_y) * BLOCK_WIDTH
-					
-	# Camera Movement
-	cam_displacement_x = player.rect.x - cam_x
-	addition_height = CAM_Y_UNDERGROUND_OFFSET if player.rect.bottom > MINE_POS[1] else -CAM_Y_UNDERGROUND_OFFSET
-	cam_displacement_y = (player.rect.y + addition_height) - cam_y
-	cam_distance_x = abs(cam_displacement_x)
-	cam_distance_y = abs(cam_displacement_y)
-	if cam_displacement_x > CAM_MIN_DISTANCE:
-		cam_x += min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt)
-	elif cam_displacement_x < -CAM_MIN_DISTANCE:
-		cam_x -= min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt)
-	
-	if cam_displacement_y > CAM_MIN_DISTANCE:
-		cam_y += min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
-	elif cam_displacement_y < -CAM_MIN_DISTANCE:
-		cam_y -= min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
-	
+		if pressed_dig and not game.in_range(current_music_time, current_rhythm_bound[0], current_rhythm_bound[1]):
+			wrong_press_next_reset = current_music_time + WRONG_PRESS_COOLDOWN_MS
 
-	# Drawing
-	cam_offset_x = -cam_x + WIDTH_HALFED
-	cam_offset_y = -cam_y + HEIGHT_HALFED
-	for block in block_group:
-		screen.blit(block.image, (round(block.rect.x + cam_offset_x), round(block.rect.y + cam_offset_y)))
+		# Player movement
+		player.handle_movement(keys, events, dt)
 
-	"""
-	# HITBLOCK RENDER TEST
-	# temporary for check only
-	temp = pygame.Surface(player.rect.size)
-	temp.fill((0, 150, 0))
-	temp_x , temp_y = player.rect.topleft
+		# Position update and collision check
+		player.update_position_and_collision(dt)
 
-	screen.blit(temp, (round(temp_x + cam_offset_x), round(temp_y + cam_offset_y)))
-	"""
-	if player_velocity_x != 0:
-		action = AnimationState.WALK
-	else:
-		action = AnimationState.IDLE
-	player.draw(screen, (round(player.rect.x + cam_offset_x + PLAYER_IMAGE_OFFSET[0]), round(player.rect.y + cam_offset_y + PLAYER_IMAGE_OFFSET[1])), facing_left, action)
-	pygame.display.flip()
+		# Break block
+		player.handle_break_block(keys, events)
+						
+		# Camera Movement
+		cam_displacement_x = player.rect.x - cam_x
+		addition_height = CAM_Y_UNDERGROUND_OFFSET if player.rect.bottom > MINE_POS[1] else -CAM_Y_UNDERGROUND_OFFSET
+		cam_displacement_y = (player.rect.y + addition_height) - cam_y
+		cam_distance_x = abs(cam_displacement_x)
+		cam_distance_y = abs(cam_displacement_y)
+		if cam_displacement_x > CAM_MIN_DISTANCE:
+			cam_x += min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt)
+		elif cam_displacement_x < -CAM_MIN_DISTANCE:
+			cam_x -= min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt)
+		
+		if cam_displacement_y > CAM_MIN_DISTANCE:
+			cam_y += min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
+		elif cam_displacement_y < -CAM_MIN_DISTANCE:
+			cam_y -= min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
+		
+
+		# Drawing
+		cam_offset_x = -cam_x + SCREEN_WIDTH_HALFED
+		cam_offset_y = -cam_y + SCREEN_HEIGHT_HALFED
+		for block in block_group:
+			screen.blit(block.image, (round(block.rect.x + cam_offset_x), round(block.rect.y + cam_offset_y)))
+
+		player.draw((round(player.rect.x + cam_offset_x), round(player.rect.y + cam_offset_y)))
+
+		for i in range(len(rhythm_surface)):
+			screen.blit(rhythm_surface[i], ((refined_rhythm_time[i][0] - current_music_time) / SHOWN_RHYTHM_WIDTH_MS * SCREEN_WIDTH + SCREEN_WIDTH_HALFED, 0))
+
+		pygame.draw.line(screen, "white", (SCREEN_WIDTH_HALFED, 0), (SCREEN_WIDTH_HALFED, 30), 2)
+
+		pygame.display.flip()
 
 
-	# Debug
-	if tick >= TARGET_TICK:
-		print(f"FPS: {(TARGET_TICK) / time_passed if time_passed > 0 else 0:.2f} pos: {player.rect.topleft} vel: {player_velocity_x, player_velocity_y} at: {airtime_tick} twt: {touch_wall_tick} tws: {touch_wall_side}                 ", end="\r")
-		tick = 0
-		time_passed = 0
+		# Debug
+		if tick >= TARGET_TICK:
+			# print(f"FPS: {(TARGET_TICK) / time_passed if time_passed > 0 else 0:.2f} bc: {beat_count} ct: {current_time} btl: {next_beat_time - ERROR_MARGIN_MS} bth: {next_beat_time + ERROR_MARGIN_MS}                ", end="\r")
+			tick = 0
+			time_passed = 0
 
-	
-	tick += 1
-	dt = clock.tick(FPS) / 1000
-	time_passed += dt
+		
+		tick += 1
+		dt = min(clock.tick(FPS) / 1000, 1 / FPS)
+		time_passed += dt
 
-print("\n\n")
-pygame.quit()
-sys.exit()
+	print("\n\n")
+	pygame.quit()
+	sys.exit()
+
+if __name__ == "__main__":
+	main()
