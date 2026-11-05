@@ -11,7 +11,7 @@ IMAGE_PATH = os.path.join(ASSET_PATH, "images")
 
 pygame.init()
 
-FULLSCREEN = False
+FULLSCREEN = True
 screen_info = pygame.display.Info()
 ORIGINAL_SCREEN_WIDTH = 800
 ORIGINAL_SCREEN_HEIGHT = 600
