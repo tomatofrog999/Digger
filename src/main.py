@@ -1,10 +1,10 @@
 import pygame
 import sys
-import math
 import os
 import game_essential as game
 import game_ui as ui
 import pygwidgets
+from game_constant import *
 from collections.abc import Callable
 
 # --- CONSTANT ---
@@ -12,36 +12,11 @@ FULL_SCREEN = False
 ORIGINAL_SCREEN_WIDTH = 800
 ORIGINAL_SCREEN_HEIGHT = 600
 
-FPS = 120
-FPS_UI = 20
 TARGET_TICK = FPS // 4
 
 BLOCK_PER_WIDTH = 15
 BLOCK_PER_HEIGHT = 50
 MINE_POS = (-100, 400)
-
-BLOCK_WIDTH = 70
-BLOCK_HEIGHT = 70
-
-GRAVITY_ACCELERATION = 640
-
-PLAYER_WALK_ACCELERATION = 500.0
-PLAYER_MAX_WALK_SPEED = 300.0
-PLAYER_MAX_SIDE_SPEED = 1200.0
-PLAYER_MAX_DOWN_SPEED = 1200.0
-PLAYER_MAX_UP_SPEED = 500.0
-PLAYER_SLOW_DOWN_ACCELERATION = 400.0
-# # v^2 = u^2 + 2as u = sqrt(2as)
-# can jump up 2 block 
-# s = block height * 2
-PLAYER_JUMP_SPEED = math.sqrt(2 * GRAVITY_ACCELERATION * ((BLOCK_HEIGHT + 5) * 2))
-PLAYER_WALL_KICK_SPEED = 150.0
-PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK = 200.0
-PLAYER_WALL_SLIDE_ACCELERATION = GRAVITY_ACCELERATION * 3 / 2
-PLAYER_WALL_SLIDE_SPEED_THRESHOLD = 100.0
-
-PLAYER_BREAK_BLOCK_DISTANCE = 3 # block
-PLAYER_TICK_TILL_ENABLE_SLIDE = round(0.1 * FPS)
 
 PLAYER_HITBLOCK_SIZE = (25, 50)
 PLAYER_SURFACE_SIZE = (24, 24)
@@ -75,7 +50,6 @@ def main():
 	SCREEN_HEIGHT_HALF = SCREEN_HEIGHT // 2
 	CAM_Y_UNDERGROUND_OFFSET = SCREEN_HEIGHT // 8
 
-	BTN_CENTER_X = round(SCREEN_WIDTH / 2)
 	PLAY_BTN_Y = round(SCREEN_HEIGHT / 1.55)
 	EXIT_BTN_Y = round(SCREEN_HEIGHT / 1.325)
 
@@ -93,9 +67,9 @@ def main():
 	play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'play_over.png'), True)
 	exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
 	exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
-
-	play_button = ui.Button(screen, (round(BTN_CENTER_X), round(PLAY_BTN_Y)), play_up_surf, play_over_surf, BUTTON_SCALE)
-	exit_button = ui.Button(screen, (round(BTN_CENTER_X), round(EXIT_BTN_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+	
+	play_button = ui.ScalableButton(screen, (round(SCREEN_WIDTH_HALF), round(PLAY_BTN_Y)), play_up_surf, play_over_surf, BUTTON_SCALE)
+	exit_button = ui.ScalableButton(screen, (round(SCREEN_WIDTH_HALF), round(EXIT_BTN_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE)
 	main_menu_group = ui.UIGroup([play_button, exit_button])
 
 	# Layer Constant
@@ -109,7 +83,7 @@ def main():
 	BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], 1, False)
 	BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 
-	LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20).init_treasure(0.001, 50)
+	LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20).init_treasure(0.01, 50)
 	LAYER1_DATA.check_init()
 
 
@@ -122,7 +96,7 @@ def main():
 	BLOCK4_SURFACE.fill("pink")
 	BLOCK4_DATA = game.BlockData(BLOCK4_SURFACE, 15.0, 0.4)
 
-	LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.05, 2).init_energy(0.02, 30).init_treasure(0.001, 80)
+	LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.05, 2).init_energy(0.02, 30).init_treasure(0.01, 80)
 	LAYER2_DATA.check_init()
 
 	# Layer 3
@@ -138,7 +112,7 @@ def main():
 	BLOCK7_SURFACE.fill("plum2")
 	BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.05)
 
-	LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.1, 3).init_energy(0.02, 50).init_treasure(0.001, 100)
+	LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.1, 3).init_energy(0.02, 50).init_treasure(0.015, 100)
 	LAYER3_DATA.check_init()
 
 
@@ -174,15 +148,13 @@ def main():
 		game.Player.AnimationState.DIG: game.Player.AnimationData(17, 3, 100, False, 3)
 	}
 	player_surface = game.load_picture(os.path.join(IMAGE_PATH, "doux.png"), True)
-	player = game.Player((0, 0), PLAYER_HITBLOCK_SIZE).init_screen(screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
-			.init_breakable_group(block_group).init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_animation_data(animation_dict) \
-			.init_walk_constant(PLAYER_WALK_ACCELERATION, PLAYER_SLOW_DOWN_ACCELERATION, PLAYER_MAX_WALK_SPEED) \
-			.init_max_speed_constant(PLAYER_MAX_SIDE_SPEED, PLAYER_MAX_DOWN_SPEED, PLAYER_MAX_UP_SPEED) \
-			.init_jump_slide_constant(PLAYER_JUMP_SPEED, PLAYER_WALL_KICK_SPEED, PLAYER_WALL_SLIDE_ACCELERATION, PLAYER_WALL_SLIDE_SPEED_THRESHOLD, PLAYER_TICK_TILL_ENABLE_SLIDE) \
-			.init_digging_constant(PLAYER_BREAK_BLOCK_DISTANCE, PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK, BLOCK_WIDTH, BLOCK_HEIGHT) \
-			.init_gravity_constant(GRAVITY_ACCELERATION).init_break_damage_constant(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER) \
-			.init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER).init_unbreakable_group(platform_group) \
-			.init_max_block(50)
+	player_stats = game.PlayerStats().init_break_damage(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER).init_max_block(50) \
+				.init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER) \
+				.init_rate_of_convertion(1.0)
+	player_stats.check_init()
+	player = game.Player((0, 0), PLAYER_HITBLOCK_SIZE, player_stats).init_screen(screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
+			.init_breakable_group(block_group).init_animation_data(animation_dict) \
+			.init_unbreakable_group(platform_group)
 	player.set_surface(player_surface, PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE)
 	player.check_init()
 
@@ -193,10 +165,10 @@ def main():
 	rhythm_handler = game.RhythmHandler(os.path.join(MUSIC_PATH, "loudness_log.txt"), RHYTHM_ERROR_MARGIN_MS, SCREEN_WIDTH * 3 // 4, 40, RHYTHM_SHOW_LENGTH_MS, WRONG_PRESS_COOLDOWN_MS) \
 					.init_screen(screen, 0.3, (SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 30))
 	rhythm_handler.check_init()
-	# rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
 
 	text_button1 = pygwidgets.TextButton(screen, (SCREEN_WIDTH - 100, 50), "Convert", textColor="white", fontSize=32)
-	
+	tb_width, tb_height = text_button1.getRect().size
+	text_button1.setLoc((SCREEN_WIDTH - tb_width, 0))
 
 	dt = 0
 	tick = 0
@@ -247,7 +219,7 @@ def main():
 
 			player.update(keys, events, dt)
 
-			if player.game_over:
+			if player_stats.game_over:
 				print("Game Over")
 				running = False
 			
@@ -255,11 +227,11 @@ def main():
 			player_rect = player.get_rect()
 			camera.update(player_rect, dt)
 
-			display_text1.setText(f"Health: {player.health}/{player.max_health} Block: {player.block}/{player.max_block} Energy: {player.energy}/{player.max_energy} Money: {player.money}")
+			display_text1.setText(f"Health: {player_stats.health}/{player_stats.max_health} Block: {player_stats.block}/{player_stats.max_block} Energy: {player_stats.energy}/{player_stats.max_energy} Money: {player_stats.money}")
 			display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
 
 			if clicked1:
-				player.convert_block_to_money()
+				player_stats.convert_block_to_money()
 
 			# --- DRAWING ---
 			cam_offset = camera.get_cam_offset()
@@ -306,7 +278,10 @@ def main():
 	pygame.quit()
 	sys.exit()
 
-class Runnable:
+class MainScene:
+	pass
+
+class Scene:
 	def __init__(self, main_loop_func: Callable, start_func: Callable, end_function: Callable):
 		self.main_loop_func = main_loop_func
 		self.start_func = start_func
