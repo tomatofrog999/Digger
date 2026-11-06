@@ -1,5 +1,23 @@
 import pygame
 
+class UIGroup:
+	def __init__(self, ui_list: list[Button]):
+		self.ui_list = ui_list
+
+	def add(self, ui: Button):
+		self.ui_list.append(ui)
+
+	def add_list(self, ui_list: list[Button]):
+		self.ui_list += ui_list
+
+	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]):
+		for ui in self.ui_list:
+			ui.update(mouse_pos, events)
+
+	def draw(self):
+		for ui in self.ui_list:
+			ui.draw()
+
 class Button:
 	def __init__(self, screen: pygame.Surface ,pos: tuple[int, int], btn_surf: pygame.Surface, btn_pressed_surf: pygame.Surface, scale: int):
 		self.screen = screen

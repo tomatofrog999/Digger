@@ -4,6 +4,7 @@ import math
 import os
 import game_essential as game
 import game_ui as ui
+import pygwidgets
 from collections.abc import Callable
 
 # --- CONSTANT ---
@@ -56,6 +57,13 @@ RHYTHM_SHOW_LENGTH_MS = 1500 # how much rhythm backward to forward in ms to show
 
 BUTTON_SCALE = 4
 
+START_ENERGY = 100
+START_HEALTH = 3
+START_BREAK_DAMAGE = 1.0
+START_BREAK_DAMAGE_MODIFIER = 1.0
+START_ON_BEAT_EXTRA_DMG = 5.0
+START_ON_BEAT_EXTRA_DMG_MODIFIER = 4.0
+
 def main():
 	pygame.init()
 	pygame.mixer.init()
@@ -88,6 +96,7 @@ def main():
 
 	play_button = ui.Button(screen, (round(BTN_CENTER_X), round(PLAY_BTN_Y)), play_up_surf, play_over_surf, BUTTON_SCALE)
 	exit_button = ui.Button(screen, (round(BTN_CENTER_X), round(EXIT_BTN_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+	main_menu_group = ui.UIGroup([play_button, exit_button])
 
 	# Layer Constant
 	SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "tiles_spritesheet.png"), True)
@@ -100,7 +109,8 @@ def main():
 	BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], 1, False)
 	BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 
-	LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA), 0.05, 1)
+	LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20).init_treasure(0.001, 50)
+	LAYER1_DATA.check_init()
 
 
 	# Layer 2
@@ -112,7 +122,8 @@ def main():
 	BLOCK4_SURFACE.fill("pink")
 	BLOCK4_DATA = game.BlockData(BLOCK4_SURFACE, 15.0, 0.4)
 
-	LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA), 0.05, 3)
+	LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.05, 2).init_energy(0.02, 30).init_treasure(0.001, 80)
+	LAYER2_DATA.check_init()
 
 	# Layer 3
 	BLOCK5_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
@@ -127,14 +138,30 @@ def main():
 	BLOCK7_SURFACE.fill("plum2")
 	BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.05)
 
-	LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA), 0.1, 3)
+	LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.1, 3).init_energy(0.02, 50).init_treasure(0.001, 100)
+	LAYER3_DATA.check_init()
 
 
 	MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT)
 
 
-	# Create block group
 	block_group = MAP1_DATA.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS)
+	platform_group = pygame.sprite.Group()
+
+	PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
+	PLATFORM1_SURFACE.fill("brown")
+	PLATFORM2_SURFACE = PLATFORM1_SURFACE.copy()
+
+	PLATFORM1 = game.PlatformSprite(PLATFORM1_SURFACE, (0, 0))
+	PLATFORM1.get_rect().topright = MINE_POS
+
+	PLATFORM2 = game.PlatformSprite(PLATFORM2_SURFACE, (MINE_POS[0] + BLOCK_WIDTH * BLOCK_PER_WIDTH, MINE_POS[1]))
+
+	platform_group.add(PLATFORM1)
+	platform_group.add(PLATFORM2)
+
+	display_text1 = pygwidgets.DisplayText(screen, (0, 0), "Test", textColor="white", fontSize=32)
+	display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
 
 	# Create player and animation
 	animation_dict = {
@@ -148,12 +175,14 @@ def main():
 	}
 	player_surface = game.load_picture(os.path.join(IMAGE_PATH, "doux.png"), True)
 	player = game.Player((0, 0), PLAYER_HITBLOCK_SIZE).init_screen(screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
-			.init_breakable_group(block_group).init_energy(100).init_health(3).init_animation_data(animation_dict) \
+			.init_breakable_group(block_group).init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_animation_data(animation_dict) \
 			.init_walk_constant(PLAYER_WALK_ACCELERATION, PLAYER_SLOW_DOWN_ACCELERATION, PLAYER_MAX_WALK_SPEED) \
 			.init_max_speed_constant(PLAYER_MAX_SIDE_SPEED, PLAYER_MAX_DOWN_SPEED, PLAYER_MAX_UP_SPEED) \
 			.init_jump_slide_constant(PLAYER_JUMP_SPEED, PLAYER_WALL_KICK_SPEED, PLAYER_WALL_SLIDE_ACCELERATION, PLAYER_WALL_SLIDE_SPEED_THRESHOLD, PLAYER_TICK_TILL_ENABLE_SLIDE) \
 			.init_digging_constant(PLAYER_BREAK_BLOCK_DISTANCE, PLAYER_ADDITION_SPEED_WHEN_BREAK_BLOCK, BLOCK_WIDTH, BLOCK_HEIGHT) \
-			.init_gravity_constant(GRAVITY_ACCELERATION).init_break_damage_constant(1.0, 1.0).init_on_beat_constant(5.0, 4.0)
+			.init_gravity_constant(GRAVITY_ACCELERATION).init_break_damage_constant(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER) \
+			.init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER).init_unbreakable_group(platform_group) \
+			.init_max_block(50)
 	player.set_surface(player_surface, PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE)
 	player.check_init()
 
@@ -162,25 +191,35 @@ def main():
 	camera.check_init()
 
 	rhythm_handler = game.RhythmHandler(os.path.join(MUSIC_PATH, "loudness_log.txt"), RHYTHM_ERROR_MARGIN_MS, SCREEN_WIDTH * 3 // 4, 40, RHYTHM_SHOW_LENGTH_MS, WRONG_PRESS_COOLDOWN_MS) \
-					.init_music(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7) \
 					.init_screen(screen, 0.3, (SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 30))
 	rhythm_handler.check_init()
-	rhythm_handler.start()
+	# rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
+
+	text_button1 = pygwidgets.TextButton(screen, (SCREEN_WIDTH - 100, 50), "Convert", textColor="white", fontSize=32)
+	
 
 	dt = 0
 	tick = 0
 	time_passed = 0 # for fps debug
 	running = True
 	real_dt = 0
+	in_menu = True
+	already_started = False
 	while running:
 		events = pygame.event.get()
 		pressed_dig = False
+		clicked1 = False
 		for event in events:
+			clicked1 = text_button1.handleEvent(event)
 			if event.type == pygame.QUIT:
 				running = False
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
-					running = False
+					if in_menu:
+						running = False
+					else:
+						in_menu = True
+						rhythm_handler.pause()
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
 
@@ -189,48 +228,70 @@ def main():
 		keys = pygame.key.get_pressed()
 		mouse_pos = pygame.mouse.get_pos()
 
-		play_button.update(mouse_pos, events)
-		exit_button.update(mouse_pos, events)
+		if in_menu:
+			main_menu_group.update(mouse_pos, events)
+	
+			if play_button.clicked:
+				in_menu = False
+				if not already_started:
+					rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
+					already_started = True
+				else:
+					rhythm_handler.unpause()
+				continue
+	
+			if exit_button.clicked:
+				running = False
+		else:
+			rhythm_handler.update(player, pressed_dig)
 
-		if play_button.clicked:
-			print("play clicked")
+			player.update(keys, events, dt)
 
-		if exit_button.clicked:
-			print("exit clicked")
+			if player.game_over:
+				print("Game Over")
+				running = False
+			
+			# Update camera movement
+			player_rect = player.get_rect()
+			camera.update(player_rect, dt)
 
-		rhythm_handler.update(player, pressed_dig)
+			display_text1.setText(f"Health: {player.health}/{player.max_health} Block: {player.block}/{player.max_block} Energy: {player.energy}/{player.max_energy} Money: {player.money}")
+			display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
 
-		player.update(keys, events, dt)
+			if clicked1:
+				player.convert_block_to_money()
 
-		if player.game_over:
-			print("Game Over")
-			running = False
-		
-		# Update camera movement
-		player_rect = player.get_rect()
-		camera.update(player_rect, dt)
+			# --- DRAWING ---
+			cam_offset = camera.get_cam_offset()
 
-		# --- DRAWING ---
-		cam_offset = camera.get_cam_offset()
+			for block in block_group:
+				if block.image == None:
+					raise TypeError("'image' variable cannot be None type.")
+				screen.blit(block.image, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
+				if block.damage_taken > 0:
+					screen.blit(block.image, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
 
-		for block in block_group:
-			if block.image == None:
-				raise TypeError("'image' variable cannot be None type.")
-			screen.blit(block.image, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
+			for platform in platform_group:
+				if platform.image == None:
+					raise TypeError("'platform' variable cannot be None type.")
+				screen.blit(platform.image, (round(platform.get_rect().x + cam_offset[0]), round(platform.get_rect().y + cam_offset[1])))
 
-		player.draw(cam_offset)
+			player.draw(cam_offset)
 
-		rhythm_handler.draw()
+			rhythm_handler.draw()
 
-		play_button.draw()
-		exit_button.draw()
+			display_text1.draw()
+			text_button1.draw()
+
+		if in_menu:
+			main_menu_group.draw()
 
 		pygame.display.flip()
 
 
 		# --- DEBUG---
 		if tick >= TARGET_TICK:
-			print(f"FPS_avg: {(TARGET_TICK) / time_passed if time_passed > 0 else 0:.2f} FPS: {(1 / real_dt) if real_dt > 0 else 0:.2f} at: {player.airtime_tick} twt: {player.touch_wall_tick} ac: {player.action}                ", end="\r")
+			# print(f"FPS_avg: {(TARGET_TICK) / time_passed if time_passed > 0 else 0:.2f} FPS: {(1 / real_dt) if real_dt > 0 else 0:.2f} at: {player.airtime_tick} twt: {player.touch_wall_tick} ac: {player.action}                ", end="\r")
 			tick = 0
 			time_passed = 0
 
@@ -244,7 +305,7 @@ def main():
 	print("\n\n")
 	pygame.quit()
 	sys.exit()
-		
+
 class Runnable:
 	def __init__(self, main_loop_func: Callable, start_func: Callable, end_function: Callable):
 		self.main_loop_func = main_loop_func
@@ -266,6 +327,8 @@ class Runnable:
 	def stop(self):
 		self.end_function()
 		self.started = False
+
+
 
 if __name__ == "__main__":
 	main()

@@ -1,27 +1,87 @@
 import pygame
 import random as r
 from enum import Enum
+import itertools
 
-class BlockSprite(pygame.sprite.Sprite):
-	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, is_bomb: bool, bomb_damage: int):
+class Block(pygame.sprite.Sprite):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, multi_block: bool):
 		super().__init__()
 		surface = pygame.transform.flip(surface, flip_x, flip_y)
 
 		self.image = surface
 		
 		self.rect = self.image.get_rect()
-		self.rect.topleft = topleft
+		rect_size = self.rect.size
+		self.multi_block = multi_block
+
+		if multi_block:
+			self.rect.size = (rect_size[0] * 2, rect_size[1] * 2)
+
+		self.get_rect().topleft = topleft
 
 		self.max_health = max_health
-		self.is_bomb = is_bomb
-		self.bomb_damage = bomb_damage
 
 		self.damage_taken = 0.0
 
 	def destroy(self, player: Player):
 		super().kill()
-		if self.is_bomb:
-			player.remove_health(self.bomb_damage)
+		player.add_block(round(self.max_health / 3))
+
+	def get_rect(self) -> pygame.Rect:
+		if not isinstance(self.rect, pygame.Rect):
+			raise TypeError("'rect' variable need to be pygame.Rect type.")
+		return self.rect
+
+class BombBlock(Block):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], flip_x: bool, flip_y: bool, bomb_damage: int):
+		super().__init__(surface, topleft, 0, flip_x, flip_y, False)
+		self.bomb_damage = bomb_damage
+
+	def destroy(self, player: Player):
+		super().kill()
+		player.remove_health(self.bomb_damage)
+
+	def get_rect(self) -> pygame.Rect:
+		if not isinstance(self.rect, pygame.Rect):
+			raise TypeError("'rect' variable need to be pygame.Rect type.")
+		return self.rect
+
+class EnergyBlock(Block):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, energy_addition: int, multi_block: bool):
+		super().__init__(surface, topleft, max_health * 1 if not self.multi_block else 2, flip_x, flip_y, multi_block)
+		self.energy_addition = energy_addition
+
+	def destroy(self, player: Player):
+		super().kill()
+		player.add_energy(self.energy_addition * 1 if not self.multi_block else 2)
+
+	def get_rect(self) -> pygame.Rect:
+		if not isinstance(self.rect, pygame.Rect):
+			raise TypeError("'rect' variable need to be pygame.Rect type.")
+		return self.rect
+
+class TreasureBlock(Block):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, money_addition: int, multi_block: bool):
+		super().__init__(surface, topleft, max_health * 1 if not self.multi_block else 2, flip_x, flip_y, multi_block)
+		self.money_addition = money_addition
+
+	def destroy(self, player: Player):
+		super().kill()
+		player.add_energy(self.money_addition * 1 if not self.multi_block else 2)
+
+	def get_rect(self) -> pygame.Rect:
+		if not isinstance(self.rect, pygame.Rect):
+			raise TypeError("'rect' variable need to be pygame.Rect type.")
+		return self.rect
+
+class PlatformSprite(pygame.sprite.Sprite):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int]):
+		super().__init__()
+
+		self.image = surface
+		
+		self.rect = self.image.get_rect()
+		self.rect.topleft = topleft
 
 	def get_rect(self) -> pygame.Rect:
 		if not isinstance(self.rect, pygame.Rect):
@@ -91,13 +151,18 @@ class Player(pygame.sprite.Sprite):
 		self.action: Player.AnimationState = Player.AnimationState.IDLE
 		self.update_animation_time = 0
 		self.animation_frame = 0
-		self.breakable_group: pygame.sprite.Group[BlockSprite] | None = None
+		self.breakable_group: pygame.sprite.Group[Block] | None = None
+		self.unbreakable_group: pygame.sprite.Group | None = None
 		self.screen: pygame.Surface | None = None
 	
 		self.max_health = -1
 		self.health = -1
 		self.max_energy = -1
 		self.energy = -1
+		self.block = 0
+		self.max_block = -1
+		self.money = 0
+		self.rate_of_convertion = 1.0
 	
 		self.touch_wall_side = Player.TouchWallState.NOT_TOUCH_WALL
 		self.facing_left = False # For movement and surface mirroring
@@ -124,10 +189,10 @@ class Player(pygame.sprite.Sprite):
 			'wall_kick_speed', 'wall_slide_acceleration', 'wall_slide_speed_threshold',
 			'tick_till_enable_slide', 'break_block_distance', 'addition_speed_when_break_block',
 			'block_width', 'block_height', 'origin_break_block_point_x', 'origin_break_block_point_y',
-			'animation_dict', 'breakable_group', 'screen',
+			'animation_dict', 'breakable_group', 'unbreakable_group', 'screen',
 			'max_health', 'health', 'max_energy', 'energy',
 			'break_damage', 'break_damage_modifier', 'gravity',
-			'on_beat_extra_damage', 'on_beat_extra_damage_modifier'
+			'on_beat_extra_damage', 'on_beat_extra_damage_modifier', 'max_block'
 		]
 		check_initialization(self, required_attrs)
 
@@ -187,14 +252,22 @@ class Player(pygame.sprite.Sprite):
 		self.breakable_group = breakable_group
 		return self
 
-	def init_health(self, max_health: int):
+	def init_unbreakable_group(self, unbreakable_group: pygame.sprite.Group):
+		self.unbreakable_group = unbreakable_group
+		return self
+
+	def init_max_health(self, max_health: int):
 		self.max_health = max_health
 		self.health = max_health
 		return self
 	
-	def init_energy(self, energy: int):
-		self.max_energy = energy
-		self.energy = energy
+	def init_max_energy(self, max_energy: int):
+		self.max_energy = max_energy
+		self.energy = max_energy
+		return self
+
+	def init_max_block(self, max_block: int):
+		self.max_block = max_block
 		return self
 
 	def init_on_beat_constant(self, on_beat_extra_damage: float, on_beat_extra_damage_modifier: float):
@@ -217,6 +290,16 @@ class Player(pygame.sprite.Sprite):
 		if not state in animation_dict:
 			return animation_dict[Player.AnimationState.IDLE]
 		return animation_dict[state]
+	
+	def get_breakable_group(self) -> pygame.sprite.Group[Block]:
+		if not isinstance(self.breakable_group, pygame.sprite.Group):
+			raise TypeError("'breakable_group' variable need to be pygame.sprite.Group type.")
+		return self.breakable_group
+
+	def get_unbreakable_group(self) -> pygame.sprite.Group:
+		if not isinstance(self.unbreakable_group, pygame.sprite.Group):
+			raise TypeError("'unbreakable_group' variable need to be pygame.sprite.Group type.")
+		return self.unbreakable_group
 
 	def set_surface(self, animation_surface: pygame.Surface, size_per_image: tuple[int, int], surface_scale: int):
 		for animation in self.get_animation_dict().values():
@@ -329,7 +412,7 @@ class Player(pygame.sprite.Sprite):
 		srect = self.get_rect()
 		srect.x += self.velocity_x * delta_time
 		if self.velocity_x != 0:
-			for block in self.breakable_group or ():
+			for block in itertools.chain(self.get_breakable_group(), self.get_unbreakable_group()):
 				if srect.colliderect(block.get_rect()):
 					if self.velocity_x > 0:
 						srect.right = block.get_rect().left
@@ -347,7 +430,7 @@ class Player(pygame.sprite.Sprite):
 		srect.y += self.velocity_y * delta_time
 		self.touch_ground = False
 		if self.velocity_y != 0:
-			for block in self.breakable_group or ():
+			for block in itertools.chain(self.get_breakable_group(), self.get_unbreakable_group()):
 				if srect.colliderect(block.get_rect()):
 					if self.velocity_y > 0:
 						srect.bottom = block.get_rect().top
@@ -427,6 +510,10 @@ class Player(pygame.sprite.Sprite):
 				for block in self.breakable_group or ():
 					is_collide = block.get_rect().collidepoint((srect.centerx + digging_offset_x, srect.centery + digging_offset_y))
 					if is_collide:
+						if self.block >= self.max_block:
+							raise ValueError("Inventory full")
+						if not self.remove_energy(1):
+							raise ValueError("Energy not enough")
 						self.change_action(Player.AnimationState.DIG)
 						if self.on_beat_hit:
 							block.damage_taken += (self.break_damage + self.on_beat_extra_damage) * (self.break_damage_modifier + self.on_beat_extra_damage_modifier)
@@ -446,11 +533,41 @@ class Player(pygame.sprite.Sprite):
 					digging_offset_x += extract_number_sign(digging_offset_x) * self.block_width
 				elif digging_offset_y != 0 and digging_offset_x == 0:
 					digging_offset_y += extract_number_sign(digging_offset_y) * self.block_height
+		return True
 
 	def update(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event], dt: float):
 		self.handle_movement(keys, events, dt)
 		self.update_position_and_collision(dt)
-		self.handle_break_block(keys, events)
+		try:
+			self.handle_break_block(keys, events)
+		except ValueError as e:
+			print(str(e))
+		
+
+	def add_block(self, amount: int):
+		if amount < 0:
+			raise ValueError("Amount cannot be negative for add_block function.")
+		self.block = min(self.block + amount, self.max_block)
+
+	def remove_block(self, amount: int):
+		if amount < 0:
+			raise ValueError("Amount cannot be negative for remove_block function.")
+		self.block = max(0, self.block - amount)
+
+	def add_energy(self, amount: int):
+		if amount < 0:
+			raise ValueError("Amount cannot be negative for add_energy function.")
+		self.block = min(self.energy + amount, self.max_energy)
+
+	def remove_energy(self, amount: int) -> bool:
+		if amount < 0:
+			raise ValueError("Amount cannot be negative for remove_energy function.")
+		new_amount = self.energy - amount
+		if new_amount < 0:
+			return False
+		else:
+			self.energy = new_amount
+			return True
 	
 	def add_health(self, amount: int):
 		if amount < 0:
@@ -466,6 +583,10 @@ class Player(pygame.sprite.Sprite):
 
 	def gameover(self):
 		self.game_over = True
+
+	def convert_block_to_money(self):
+		self.money += round(self.block * self.rate_of_convertion)
+		self.block = 0
 		
 
 class BlockData:
@@ -475,17 +596,42 @@ class BlockData:
 		self.spawn_weight = spawn_weight
 
 class LayerData:
-	def __init__(self, end_layer: int, block_tuple: tuple[BlockData, ...], bomb_rate: float, bomb_damage: int):
+	def __init__(self, end_layer: int, block_tuple: tuple[BlockData, ...]):
 		self.end_layer = end_layer
 		self.block_tuple = block_tuple
-		self.bomb_rate = bomb_rate
-		self.bomb_damage = bomb_damage
+		self.bomb_rate = -1
+		self.bomb_damage = -1
+		self.energy_rate = -1
+		self.energy_addition = -1
+		self.treasure_rate = -1
+		self.treasure_addition = -1
 		combined_weight = 0
 		for x in self.block_tuple:
 			combined_weight += x.spawn_weight
 
 		if round(combined_weight, 4) != 1.0:
 			raise ValueError("Combined weight of BlockData in LayerData is not 1.")
+
+	def init_bomb(self, bomb_rate: float, bomb_damage: int):
+		self.bomb_rate = bomb_rate
+		self.bomb_damage = bomb_damage
+		return self
+
+	def init_energy(self, energy_rate: float, energy_addition: int):
+		self.energy_rate = energy_rate
+		self.energy_addition = energy_addition
+		return self
+
+	def init_treasure(self, treasure_rate: float, treasure_addition: int):
+		self.treasure_rate = treasure_rate
+		self.treasure_addition = treasure_addition
+		return self
+
+	def check_init(self):
+		required_attrs = [
+			'bomb_rate', 'bomb_damage', 'energy_rate', 'energy_addition', 'treasure_rate', 'treasure_addition'
+		]
+		check_initialization(self, required_attrs)
 
 	def get_random_block(self) -> BlockData:
 		temp_random = r.random()
@@ -505,7 +651,7 @@ class MapData:
 		self.block_width = block_width
 		self.block_height = block_height
 
-	def create_sprite_group(self, width: int, height: int, map_position: tuple[int, int]) -> pygame.sprite.Group[BlockSprite]:
+	def create_sprite_group(self, width: int, height: int, map_position: tuple[int, int]) -> pygame.sprite.Group[Block]:
 		block_group = pygame.sprite.Group()
 		block_x, block_y = 0, 0
 		layer_index = 0
@@ -524,9 +670,9 @@ class MapData:
 				if is_bomb:
 					bomb_block = pygame.Surface((self.block_width, self.block_height))
 					bomb_block.fill("red")
-					block = BlockSprite(bomb_block, (block_x + map_position[0], block_y + map_position[1]), 0, False, False, True, layer.bomb_damage)
+					block = BombBlock(bomb_block, (block_x + map_position[0], block_y + map_position[1]), False, False, layer.bomb_damage)
 				else:
-					block = BlockSprite(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health, False, False, False, 0)
+					block = Block(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health, False, False, False)
 				block_group.add(block)
 				block_x += self.block_width
 			block_y += self.block_height
@@ -619,8 +765,6 @@ class RhythmHandler:
 			temp_surf.append(rhythm_surf)
 		self.rhythm_surface_tuple: tuple[pygame.Surface, ...] = tuple(temp_surf)
 
-		self.music_file: str | None = None
-		self.loudness = -1
 		self.rhythm_index = 0
 		self.wrong_press_next_reset = 0
 		self.wrong_press_cooldown_ms = wrong_press_cooldown_ms
@@ -631,11 +775,6 @@ class RhythmHandler:
 		self.topleft_pos = (0, 0)
 		self.rhythm_show_length_ms = rhythm_show_length_ms
 
-	def init_music(self, music_file: str, loudness: float):
-		self.music_file = music_file
-		self.loudness = loudness
-		return self
-
 	def init_screen(self, screen: pygame.Surface, line_pos_ratio: float, center_pos: tuple[int, int] = (0, 0)):
 		self.screen = screen
 		self.topleft_pos = (center_pos[0] - self.width // 2, center_pos[1] - self.height // 2)
@@ -645,7 +784,7 @@ class RhythmHandler:
 
 	def check_init(self):
 		required_attrs = [
-			'music_file', 'loudness', 'screen', 'line_offset_x', 'line_pos_ratio'
+			'screen', 'line_offset_x', 'line_pos_ratio'
 		]
 		check_initialization(self, required_attrs)
 
@@ -654,14 +793,23 @@ class RhythmHandler:
 			raise TypeError("'screen' variable need to be pygame.Surface type.")
 		return self.screen
 
-	def start(self):
-		if self.music_file == None:
-			raise TypeError("'music_file' variable cannot be None type.")
-		pygame.mixer.music.load(self.music_file)
-		pygame.mixer.music.set_volume(self.loudness)
+	def start(self, music_file: str, loudness: float):
+		pygame.mixer.music.load(music_file)
+		pygame.mixer.music.set_volume(loudness)
 		pygame.mixer.music.play()
 
+	def pause(self):
+		pygame.mixer.music.pause()
+
+	def unpause(self):
+		pygame.mixer.music.unpause()
+
+	def stop(self):
+		pygame.mixer.music.stop()
+
 	def update(self, player: Player, pressed_dig: bool):
+		if not pygame.mixer.music.get_busy():
+			return
 		self.current_music_time = pygame.mixer.music.get_pos()
 		current_rhythm_bound = self.rhythm_bound_tuple[self.rhythm_index]
 
@@ -673,6 +821,8 @@ class RhythmHandler:
 			else:
 				self.rhythm_index = 0
 				pygame.mixer.music.stop()
+				for surface in self.rhythm_surface_tuple:
+					surface.fill("purple")
 				pygame.mixer.music.play()
 				self.current_music_time = pygame.mixer.music.get_pos()
 			current_rhythm_bound = self.rhythm_bound_tuple[self.rhythm_index]
@@ -685,6 +835,8 @@ class RhythmHandler:
 			else:
 				rhythm_index = 0
 				pygame.mixer.music.stop()
+				for surface in self.rhythm_surface_tuple:
+					surface.fill("purple")
 				pygame.mixer.music.play()
 				self.current_music_time = pygame.mixer.music.get_pos()
 
@@ -767,7 +919,7 @@ def get_surface_from_sprite_sheet2(sprite_sheet_surface: pygame.Surface, start_p
 	image = pygame.transform.scale(image, (width * scale, height * scale))
 	return image
 
-def check_initialization(obj: object,required_attrs: list[str]):
+def check_initialization(obj: object, required_attrs: list[str]):
 	uninitialized = [attr for attr in required_attrs if getattr(obj, attr) in (-1, -1.0, None)]
 	if any(uninitialized):
 		raise ValueError(f"Object are not initialized properly. Attributes that are not initialized: {uninitialized}.")
