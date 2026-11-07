@@ -1,14 +1,14 @@
 import pygame
-import game_essential as game
+import pygwidgets
 
 class UIGroup:
-	def __init__(self, ui_list: list[ScalableButton]):
+	def __init__(self, ui_list: list[Button]):
 		self.ui_list = ui_list
 
-	def add(self, ui: ScalableButton):
+	def add(self, ui: Button):
 		self.ui_list.append(ui)
 
-	def add_list(self, ui_list: list[ScalableButton]):
+	def add_list(self, ui_list: list[Button]):
 		self.ui_list += ui_list
 
 	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]):
@@ -19,17 +19,21 @@ class UIGroup:
 		for ui in self.ui_list:
 			ui.draw()
 
-class ScalableButton:
-	def __init__(self, screen: pygame.Surface ,pos: tuple[int, int], btn_surf: pygame.Surface, btn_pressed_surf: pygame.Surface, scale: int):
+class Button:
+	def __init__(self, screen: pygame.Surface, pos: tuple[int, int], btn_surf: pygame.Surface, btn_pressed_surf: pygame.Surface, scale: float = 1.0, anchor: str = "center", flip_x: bool = False, flip_y: bool = False):
 		self.screen = screen
+		btn_surf = pygame.transform.flip(btn_surf, flip_x, flip_y)
+		btn_pressed_surf = pygame.transform.flip(btn_pressed_surf, flip_x, flip_y)
 		self.up = btn_surf
 		self.over = btn_pressed_surf
+		self.pos = pos
+		
 		width = self.up.get_width()
 		height = self.up.get_height()
-		self.up = game.scale_surface(self.up, scale)
-		self.over = game.scale_surface(self.over, scale)
+		self.up = pygame.transform.scale(self.up, ((width * scale), (height * scale)))
+		self.over = pygame.transform.scale(self.over, ((width * scale), (height * scale)))
 		self.rect =  self.up.get_rect()
-		self.rect.center = pos
+		setattr(self.rect, anchor, pos)
 		self.activated = False
 		self.clicked = False
 
