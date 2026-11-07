@@ -28,7 +28,7 @@ CAM_SPEED_SCALE = 4.0 # add up this much per distance(pixel)
 CAM_MIN_DISTANCE = 10.0
 
 RHYTHM_ERROR_MARGIN_MS = 50
-WRONG_PRESS_COOLDOWN_MS = 500
+WRONG_PRESS_COOLDOWN_MS = 300
 RHYTHM_SHOW_LENGTH_MS = 1500 # how much rhythm backward to forward in ms to show on screen
 
 BUTTON_SCALE = 4
@@ -131,7 +131,7 @@ def main():
 	MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT)
 
 
-	block_group = MAP1_DATA.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS)
+	block_group = MAP1_DATA.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS, WORLD_SEED, [(5, 9)])
 	platform_group = pygame.sprite.Group()
 
 	PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
@@ -148,6 +148,9 @@ def main():
 
 	display_text1 = pygwidgets.DisplayText(screen, (0, 0), "Test", textColor="white", fontSize=32)
 	display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
+
+	display_text2 = pygwidgets.DisplayText(screen, (0, 0), "Test", textColor="white", fontSize=32)
+	display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 20))
 
 	# Create player and animation
 	animation_dict = {
@@ -182,6 +185,8 @@ def main():
 	text_button1 = pygwidgets.TextButton(screen, (SCREEN_WIDTH - 100, 50), "Convert", textColor="white", fontSize=32)
 	tb_width, tb_height = text_button1.getRect().size
 	text_button1.setLoc((SCREEN_WIDTH - tb_width, 0))
+
+	game_state = game.GameState(player_stats, WORLD_SEED)
 
 	dt = 0
 	tick = 0
@@ -230,7 +235,7 @@ def main():
 		else:
 			rhythm_handler.update(player, pressed_dig)
 
-			player.update(keys, events, dt)
+			player.update(keys, events, dt, game_state)
 
 			if player_stats.game_over:
 				print("Game Over")
@@ -242,6 +247,9 @@ def main():
 
 			display_text1.setText(f"Health: {player_stats.health}/{player_stats.max_health} Block: {player_stats.block}/{player_stats.max_block} Energy: {player_stats.energy}/{player_stats.max_energy} Money: {player_stats.money}")
 			display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
+
+			display_text2.setText(f"{game_state.block_broken}")
+			display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 100))
 
 			if clicked1:
 				player_stats.convert_block_to_money()
@@ -268,6 +276,7 @@ def main():
 			rhythm_handler.draw()
 
 			display_text1.draw()
+			display_text2.draw()
 			text_button1.draw()
 
 		if in_menu:

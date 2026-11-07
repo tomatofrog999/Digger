@@ -3,6 +3,7 @@ import random as r
 from enum import Enum
 import itertools
 import math
+import json
 from game_constant import *
 
 class Block(pygame.sprite.Sprite):
@@ -28,6 +29,11 @@ class Block(pygame.sprite.Sprite):
 		self.gain_block = round(self.max_health * Block.HEALTH_TO_BLOCK_RATE)
 
 		self.energy_usage = energy_usage
+
+		self.position_index: tuple[int, int] | None = None
+
+	def set_position_index(self, position_index: tuple[int, int]):
+		self.position_index = position_index
 
 	def check_damage(self, value: float) -> bool:
 		return self.damage_taken + value >= self.max_health
@@ -499,7 +505,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 			self.airtime_tick += 1
 			self.change_action(PlayerSprite.AnimationState.FALL)
 
-	def handle_break_block(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event]):
+	def handle_break_block(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event], game_state: GameState):
 		j_pressed = False
 		k_pressed = False
 		for event in events:
@@ -583,6 +589,9 @@ class PlayerSprite(pygame.sprite.Sprite):
 								self.velocity_x += extract_number_sign(digging_offset_x) * PlayerSprite.ADDITION_SPEED_WHEN_BREAK_BLOCK
 							if digging_offset_y > 0:
 								self.velocity_y += PlayerSprite.ADDITION_SPEED_WHEN_BREAK_BLOCK
+							pos_index = block.position_index
+							if pos_index != None:
+								game_state.block_broken.append(pos_index)
 							block.destroy(self.player_stats)
 						break
 				if is_collide:
@@ -593,11 +602,11 @@ class PlayerSprite(pygame.sprite.Sprite):
 					digging_offset_y += extract_number_sign(digging_offset_y) * BLOCK_HEIGHT
 		return True
 
-	def update(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event], dt: float):
+	def update(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event], dt: float, game_state: GameState):
 		self.handle_movement(keys, events, dt)
 		self.update_position_and_collision(dt)
 		try:
-			self.handle_break_block(keys, events)
+			self.handle_break_block(keys, events, game_state)
 		except ValueError as e:
 			print(str(e))
 		
@@ -663,8 +672,8 @@ class LayerData:
 		if self.multiblock_rate > 1:
 			raise ValueError("Multiblock rate shouldn't exceed 1")
 
-	def get_random_block(self) -> BlockData:
-		choosen = random_with_rate([x.spawn_weight for x in self.block_tuple])
+	def get_random_block(self, rng: r.Random | None = None) -> BlockData:
+		choosen = random_with_rate([x.spawn_weight for x in self.block_tuple], rng=rng)
 		if choosen == -1:
 			raise RuntimeError(f"Impossible state on get_random_block.")
 		return self.block_tuple[choosen]
@@ -676,7 +685,11 @@ class MapData:
 		self.block_width = block_width
 		self.block_height = block_height
 
-	def create_sprite_group(self, width: int, height: int, map_position: tuple[int, int]) -> pygame.sprite.Group[Block]:
+	def create_sprite_group(self, width: int, height: int, map_position: tuple[int, int], seed: int, ignored_block_index: list[tuple[int, int]] = []) -> pygame.sprite.Group[Block]:
+		# by set the seed it will make random after run again to be the same if set to the same seed
+		# that mean random after set the seed and run any random function 100 time and set the seed and run the 100 one again 
+		# it will be the same in all 100 but if other place call random in between the 100 time it will make the result off
+		local_rng = r.Random(seed)
 		block_group = pygame.sprite.Group()
 		block_x, block_y = 0, 0
 		layer_index = 0
@@ -694,14 +707,21 @@ class MapData:
 				if (width_index, height_index) in multiblock_occupied_index:
 					block_x += self.block_width
 					continue
-				block_data = layer.get_random_block()
-				choosen = random_with_rate((layer.bomb_rate, layer.energy_rate, layer.treasure_rate))
+				block_data = layer.get_random_block(rng=local_rng)
+				choosen = random_with_rate((layer.bomb_rate, layer.energy_rate, layer.treasure_rate), rng=local_rng)
 				multi_block = False
 				if choosen != 0 and width_index + 1 < width and height_index + 1 < height \
 						and all([pos_index not in multiblock_occupied_index for pos_index in [(width_index, height_index), (width_index + 1, height_index), (width_index, height_index + 1), (width_index + 1, height_index + 1)]]) \
-						and r.random() < layer.multiblock_rate:
+						and height_index + 1 < layer.end_layer and local_rng.random() < layer.multiblock_rate:
 					multi_block = True
 					multiblock_occupied_index.extend([(width_index, height_index), (width_index + 1, height_index), (width_index, height_index + 1), (width_index + 1, height_index + 1)])
+
+				# Placed after multi-block logic to ensure it will generate the same random result from seed 
+				# and also to make it add occupied square for multi block so it not generate other block on the occupied square of multi-block
+				if (width_index, height_index) in ignored_block_index:
+					block_x += self.block_width
+					continue
+
 				if choosen == 0:
 					bomb_block = pygame.Surface((self.block_width, self.block_height))
 					bomb_block.fill("red")
@@ -716,6 +736,7 @@ class MapData:
 					block = TreasureBlock(treasure_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.treasure_addition, multi_block, layer.energy_usage)
 				else:
 					block = Block(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health, False, False, multi_block, layer.energy_usage)
+				block.set_position_index((width_index, height_index))
 				block_group.add(block)
 				block_x += self.block_width
 			block_y += self.block_height
@@ -912,6 +933,21 @@ class RhythmHandler:
 
 		pygame.draw.line(screen, "white", (self.line_offset_x + self.topleft_pos[0], self.topleft_pos[1]), (self.line_offset_x + self.topleft_pos[0], self.height + self.topleft_pos[1]), RhythmHandler.LINE_WIDTH)
 
+class GameState:
+	def __init__(self, player_stats: PlayerStats, seed: int):
+		self.player_stats = player_stats
+		self.block_broken: list[tuple[int, int]] = []
+		self.seed = seed
+
+def save_game(file_location: str, player_stats: PlayerStats, game_state: GameState):
+	temp_dict = \
+	{
+		"game_version": GAME_VERSION, 
+	    "save_data": {}
+	}
+	with open(file_location, "w") as f:
+		f.write(json.dumps(temp_dict))
+
 def clamp(val: int | float, min_val: int | float, max_val: int | float) -> int | float:
 	return min(max(val, min_val), max_val)
 
@@ -923,8 +959,8 @@ def extract_number_sign(value: int | float):
 def in_range(value: int | float, min_val: int | float, max_val: int | float) -> bool:
 	return (min_val < value < max_val)
 
-def random_with_rate(rates: list[float] | tuple[float, ...]) -> int:
-	temp_random = r.random()
+def random_with_rate(rates: list[float] | tuple[float, ...], rng: r.Random | None = None) -> int:
+	temp_random = r.random() if rng == None else rng.random()
 	length = len(rates)
 	combined_weight = 0
 	for i in range(length):
@@ -960,7 +996,7 @@ def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: t
 		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
 	else:
 		image = pygame.Surface(size_per_image)
-	image.blit(sprite_sheet_surface, (0,0) ,((index[0] * width, index[1] * height) ,size_per_image))
+	image.blit(sprite_sheet_surface, (0,0), ((index[0] * width, index[1] * height), size_per_image))
 	image = scale_surface(image, scale)
 	return image
 
@@ -969,7 +1005,7 @@ def get_surface_from_sprite_sheet2(sprite_sheet_surface: pygame.Surface, start_p
 		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
 	else:
 		image = pygame.Surface(size_per_image)
-	image.blit(sprite_sheet_surface, (0,0) ,(start_point ,size_per_image))
+	image.blit(sprite_sheet_surface, (0,0), (start_point ,size_per_image))
 	image = scale_surface(image, scale)
 	return image
 
