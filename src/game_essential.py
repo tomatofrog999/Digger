@@ -7,18 +7,17 @@ from game_constant import *
 
 class Block(pygame.sprite.Sprite):
 	HEALTH_TO_BLOCK_RATE = 1 / 3 
-	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, multi_block: bool):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, multi_block: bool, energy_usage: int):
 		super().__init__()
 		surface = pygame.transform.flip(surface, flip_x, flip_y)
 
-		self.image = surface
+		if multi_block:
+			self.image = scale_surface(surface, 2)
+		else:
+			self.image = surface
 		
 		self.rect = self.image.get_rect()
 		self.multi_block = multi_block
-
-		if multi_block:
-			rect_size = self.rect.size
-			self.rect.size = (rect_size[0] * 2, rect_size[1] * 2)
 
 		self.get_rect().topleft = topleft
 
@@ -26,9 +25,16 @@ class Block(pygame.sprite.Sprite):
 
 		self.damage_taken = 0.0
 
+		self.gain_block = round(self.max_health * Block.HEALTH_TO_BLOCK_RATE)
+
+		self.energy_usage = energy_usage
+
+	def check_damage(self, value: float) -> bool:
+		return self.damage_taken + value >= self.max_health
+
 	def destroy(self, player_stats: PlayerStats):
 		super().kill()
-		player_stats.add_block(round(self.max_health * Block.HEALTH_TO_BLOCK_RATE))
+		player_stats.add_block(self.gain_block)
 
 	def get_rect(self) -> pygame.Rect:
 		if not isinstance(self.rect, pygame.Rect):
@@ -36,9 +42,10 @@ class Block(pygame.sprite.Sprite):
 		return self.rect
 
 class BombBlock(Block):
-	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], flip_x: bool, flip_y: bool, bomb_damage: int):
-		super().__init__(surface, topleft, 0, flip_x, flip_y, False)
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], flip_x: bool, flip_y: bool, bomb_damage: int, energy_usage: int):
+		super().__init__(surface, topleft, 0, flip_x, flip_y, False, energy_usage)
 		self.bomb_damage = bomb_damage
+		self.gain_block = 0
 
 	def destroy(self, player_stats: PlayerStats):
 		super().kill()
@@ -50,13 +57,15 @@ class BombBlock(Block):
 		return self.rect
 
 class EnergyBlock(Block):
-	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, energy_addition: int, multi_block: bool):
-		super().__init__(surface, topleft, max_health * 1 if not multi_block else 2, flip_x, flip_y, multi_block)
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, energy_addition: int, multi_block: bool, energy_usage: int):
+		super().__init__(surface, topleft, max_health * 1 if not multi_block else 2, flip_x, flip_y, multi_block, energy_usage)
 		self.energy_addition = energy_addition
+		self.gain_block = 0
+		self.gain_energy = self.energy_addition * 1 if not self.multi_block else 4
 
 	def destroy(self, player_stats: PlayerStats):
 		super().kill()
-		player_stats.add_energy(self.energy_addition * 1 if not self.multi_block else 2)
+		player_stats.add_energy(self.gain_energy)
 
 	def get_rect(self) -> pygame.Rect:
 		if not isinstance(self.rect, pygame.Rect):
@@ -64,13 +73,13 @@ class EnergyBlock(Block):
 		return self.rect
 
 class TreasureBlock(Block):
-	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, money_addition: int, multi_block: bool):
-		super().__init__(surface, topleft, max_health * 1 if not multi_block else 2, flip_x, flip_y, multi_block)
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, money_addition: int, multi_block: bool, energy_usage: int):
+		super().__init__(surface, topleft, max_health * 1 if not multi_block else 2, flip_x, flip_y, multi_block, energy_usage)
 		self.money_addition = money_addition
 
 	def destroy(self, player_stats: PlayerStats):
 		super().kill()
-		player_stats.add_money(self.money_addition * 1 if not self.multi_block else 2)
+		player_stats.add_money(self.money_addition * 1 if not self.multi_block else 4)
 
 	def get_rect(self) -> pygame.Rect:
 		if not isinstance(self.rect, pygame.Rect):
@@ -212,7 +221,7 @@ class PlayerStats:
 		self.money += round(self.block * self.rate_of_convertion)
 		self.block = 0
 
-class Player(pygame.sprite.Sprite):
+class PlayerSprite(pygame.sprite.Sprite):
 	class AnimationData:
 		def __init__(self, start_index: int, step: int, cooldown_ms: int, loop: bool, priority: int):
 			self.start_index = start_index
@@ -266,18 +275,18 @@ class Player(pygame.sprite.Sprite):
 		self.image_offset: tuple[int, int] = (0,0)
 
 		self.player_stats: PlayerStats = player_stats
-		self.animation_dict: dict[Player.AnimationState, Player.AnimationData] | None = None
-		self.last_action: Player.AnimationState = Player.AnimationState.IDLE
-		self.action: Player.AnimationState = Player.AnimationState.IDLE
+		self.animation_dict: dict[PlayerSprite.AnimationState, PlayerSprite.AnimationData] | None = None
+		self.last_action: PlayerSprite.AnimationState = PlayerSprite.AnimationState.IDLE
+		self.action: PlayerSprite.AnimationState = PlayerSprite.AnimationState.IDLE
 		self.update_animation_time = 0
 		self.animation_frame = 0
 		self.breakable_group: pygame.sprite.Group[Block] | None = None
 		self.unbreakable_group: pygame.sprite.Group | None = None
 		self.screen: pygame.Surface | None = None
 
-		self.touch_wall_side = Player.TouchWallState.NOT_TOUCH_WALL
+		self.touch_wall_side = PlayerSprite.TouchWallState.NOT_TOUCH_WALL
 		self.facing_left = False # For movement and surface mirroring
-		self.facing_direction = Player.DirectionState.DOWN # For diging direction
+		self.facing_direction = PlayerSprite.DirectionState.DOWN # For diging direction
 		self.on_beat_hit = False
 	
 		self.airtime_tick = 0
@@ -299,7 +308,7 @@ class Player(pygame.sprite.Sprite):
 	
 	def init_animation_data(self, animation_data: dict[AnimationState, AnimationData]):
 		self.animation_dict = animation_data
-		if Player.AnimationState.IDLE not in animation_data:
+		if PlayerSprite.AnimationState.IDLE not in animation_data:
 			raise ValueError("Animation data should have atleast an idle state.")
 		return self
 
@@ -329,10 +338,10 @@ class Player(pygame.sprite.Sprite):
 			raise TypeError("'animation_data' variable need to be dict type.")
 		return self.animation_dict
 
-	def get_animation_data(self, state: AnimationState) -> Player.AnimationData:
+	def get_animation_data(self, state: AnimationState) -> PlayerSprite.AnimationData:
 		animation_dict = self.get_animation_dict()
 		if not state in animation_dict:
-			return animation_dict[Player.AnimationState.IDLE]
+			return animation_dict[PlayerSprite.AnimationState.IDLE]
 		return animation_dict[state]
 	
 	def get_breakable_group(self) -> pygame.sprite.Group[Block]:
@@ -351,7 +360,7 @@ class Player(pygame.sprite.Sprite):
 			for i in range(animation.start_index, animation.start_index + animation.step):
 				temp_list.append(get_surface_from_sprite_sheet(animation_surface, (i, 0), size_per_image, surface_scale, True))
 			animation.surfaces = tuple(temp_list)
-		default_animation = self.get_animation_data(Player.AnimationState.IDLE)
+		default_animation = self.get_animation_data(PlayerSprite.AnimationState.IDLE)
 		self.image = default_animation.surfaces[0]
 
 	def change_action(self, new_action: AnimationState, forced: bool = False):
@@ -388,7 +397,7 @@ class Player(pygame.sprite.Sprite):
 				self.animation_frame = (self.animation_frame + 1) if self.animation_frame < len(animation.surfaces) - 1 else 0
 			else:
 				if self.animation_frame >= len(animation.surfaces) - 1:
-					self.change_action(Player.AnimationState.IDLE, forced=True)
+					self.change_action(PlayerSprite.AnimationState.IDLE, forced=True)
 				else:
 					self.animation_frame += 1
 
@@ -413,46 +422,46 @@ class Player(pygame.sprite.Sprite):
 		if (a_pressed or d_pressed) and not (a_pressed and d_pressed) and not (j_pressed or k_pressed):
 			if a_pressed:
 				self.facing_left = True
-				temp_velocity = -Player.WALK_ACCELERATION * delta_time
-				temp_velocity = clamp(-Player.MAX_WALK_SPEED - self.velocity_x, temp_velocity, 0)
+				temp_velocity = -PlayerSprite.WALK_ACCELERATION * delta_time
+				temp_velocity = clamp(-PlayerSprite.MAX_WALK_SPEED - self.velocity_x, temp_velocity, 0)
 			else:
 				self.facing_left = False
-				temp_velocity = Player.WALK_ACCELERATION * delta_time
-				temp_velocity = clamp(Player.MAX_WALK_SPEED - self.velocity_x, 0, temp_velocity)
+				temp_velocity = PlayerSprite.WALK_ACCELERATION * delta_time
+				temp_velocity = clamp(PlayerSprite.MAX_WALK_SPEED - self.velocity_x, 0, temp_velocity)
 			self.velocity_x += temp_velocity
 
-			self.change_action(Player.AnimationState.WALK)
+			self.change_action(PlayerSprite.AnimationState.WALK)
 		elif self.velocity_x != 0:
-			self.velocity_x -= extract_number_sign(self.velocity_x) * min(abs(self.velocity_x), Player.SLOW_DOWN_ACCELERATION * delta_time)
+			self.velocity_x -= extract_number_sign(self.velocity_x) * min(abs(self.velocity_x), PlayerSprite.SLOW_DOWN_ACCELERATION * delta_time)
 		else:
-			self.change_action(Player.AnimationState.IDLE)
-		self.velocity_x = clamp(self.velocity_x, -Player.MAX_SIDE_SPEED, Player.MAX_SIDE_SPEED)
+			self.change_action(PlayerSprite.AnimationState.IDLE)
+		self.velocity_x = clamp(self.velocity_x, -PlayerSprite.MAX_SIDE_SPEED, PlayerSprite.MAX_SIDE_SPEED)
 	
-		can_wall_sliding = self.touch_wall_tick >= Player.TICK_TILL_ENABLE_SLIDE and self.airtime_tick > Player.TICK_TILL_ENABLE_SLIDE
+		can_wall_sliding = self.touch_wall_tick >= PlayerSprite.TICK_TILL_ENABLE_SLIDE and self.airtime_tick > PlayerSprite.TICK_TILL_ENABLE_SLIDE
 		if space_pressed and (self.airtime_tick <= 0 or can_wall_sliding) and not (j_pressed or k_pressed):
-			if can_wall_sliding and self.touch_wall_side != Player.TouchWallState.NOT_TOUCH_WALL:
-				if self.touch_wall_side == Player.TouchWallState.TOUCH_WALL_LEFT:
-					self.velocity_x += Player.WALL_KICK_SPEED
+			if can_wall_sliding and self.touch_wall_side != PlayerSprite.TouchWallState.NOT_TOUCH_WALL:
+				if self.touch_wall_side == PlayerSprite.TouchWallState.TOUCH_WALL_LEFT:
+					self.velocity_x += PlayerSprite.WALL_KICK_SPEED
 				else:
-					self.velocity_x -= Player.WALL_KICK_SPEED
+					self.velocity_x -= PlayerSprite.WALL_KICK_SPEED
 				self.touch_wall_tick = 0
-				self.change_action(Player.AnimationState.WALL_JUMP)
+				self.change_action(PlayerSprite.AnimationState.WALL_JUMP)
 			else:
-				self.change_action(Player.AnimationState.JUMP)
-			self.velocity_y -= Player.JUMP_SPEED
+				self.change_action(PlayerSprite.AnimationState.JUMP)
+			self.velocity_y -= PlayerSprite.JUMP_SPEED
 	
-		if can_wall_sliding and self.velocity_y > Player.WALL_SLIDE_SPEED_THRESHOLD:
-			self.velocity_y -= Player.WALL_SLIDE_ACCELERATION * delta_time
+		if can_wall_sliding and self.velocity_y > PlayerSprite.WALL_SLIDE_SPEED_THRESHOLD:
+			self.velocity_y -= PlayerSprite.WALL_SLIDE_ACCELERATION * delta_time
 		if can_wall_sliding:
-			self.change_action(Player.AnimationState.WALL_SLIDE)
-		elif self.action == Player.AnimationState.WALL_SLIDE and not can_wall_sliding:
-			self.change_action(Player.AnimationState.IDLE, forced=True)
+			self.change_action(PlayerSprite.AnimationState.WALL_SLIDE)
+		elif self.action == PlayerSprite.AnimationState.WALL_SLIDE and not can_wall_sliding:
+			self.change_action(PlayerSprite.AnimationState.IDLE, forced=True)
 	
 		self.velocity_y += GRAVITY_ACCELERATION * delta_time
-		self.velocity_y = clamp(self.velocity_y, -Player.MAX_UP_SPEED, Player.MAX_DOWN_SPEED)
+		self.velocity_y = clamp(self.velocity_y, -PlayerSprite.MAX_UP_SPEED, PlayerSprite.MAX_DOWN_SPEED)
 
 	def update_position_and_collision(self, delta_time: float):
-		self.touch_wall_side = Player.TouchWallState.NOT_TOUCH_WALL
+		self.touch_wall_side = PlayerSprite.TouchWallState.NOT_TOUCH_WALL
 		srect = self.get_rect()
 		srect.x += self.velocity_x * delta_time
 		if self.velocity_x != 0:
@@ -460,13 +469,13 @@ class Player(pygame.sprite.Sprite):
 				if srect.colliderect(block.get_rect()):
 					if self.velocity_x > 0:
 						srect.right = block.get_rect().left
-						self.touch_wall_side = Player.TouchWallState.TOUCH_WALL_RIGHT
+						self.touch_wall_side = PlayerSprite.TouchWallState.TOUCH_WALL_RIGHT
 					else:
 						srect.left = block.get_rect().right
-						self.touch_wall_side = Player.TouchWallState.TOUCH_WALL_LEFT
+						self.touch_wall_side = PlayerSprite.TouchWallState.TOUCH_WALL_LEFT
 					self.velocity_x = 0
 					break
-		if self.touch_wall_side == Player.TouchWallState.NOT_TOUCH_WALL:
+		if self.touch_wall_side == PlayerSprite.TouchWallState.NOT_TOUCH_WALL:
 			self.touch_wall_tick = 0
 		else:
 			self.touch_wall_tick += 1
@@ -480,15 +489,15 @@ class Player(pygame.sprite.Sprite):
 						srect.bottom = block.get_rect().top
 						self.touch_ground = True
 						self.airtime_tick = 0
-						if self.action in (Player.AnimationState.JUMP, Player.AnimationState.FALL, Player.AnimationState.WALL_SLIDE):
-							self.change_action(Player.AnimationState.IDLE, forced=True)
+						if self.action in (PlayerSprite.AnimationState.JUMP, PlayerSprite.AnimationState.FALL, PlayerSprite.AnimationState.WALL_SLIDE):
+							self.change_action(PlayerSprite.AnimationState.IDLE, forced=True)
 					else:
 						srect.top = block.get_rect().bottom
 					self.velocity_y = 0
 					break
 		if not self.touch_ground:
 			self.airtime_tick += 1
-			self.change_action(Player.AnimationState.FALL)
+			self.change_action(PlayerSprite.AnimationState.FALL)
 
 	def handle_break_block(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event]):
 		j_pressed = False
@@ -510,15 +519,15 @@ class Player(pygame.sprite.Sprite):
 		if not_diagonally:
 			if not (w_pressed and d_pressed):
 				if w_pressed:
-					self.facing_direction = Player.DirectionState.UP
+					self.facing_direction = PlayerSprite.DirectionState.UP
 				elif s_pressed:
-					self.facing_direction = Player.DirectionState.DOWN
+					self.facing_direction = PlayerSprite.DirectionState.DOWN
 
 			if not (a_pressed and d_pressed):
 				if a_pressed:
-					self.facing_direction = Player.DirectionState.LEFT
+					self.facing_direction = PlayerSprite.DirectionState.LEFT
 				elif d_pressed:
-					self.facing_direction = Player.DirectionState.RIGHT
+					self.facing_direction = PlayerSprite.DirectionState.RIGHT
 
 		if (j_pressed or k_pressed) and not_diagonally:
 			digging_offset_x = 0
@@ -526,49 +535,54 @@ class Player(pygame.sprite.Sprite):
 			if w_pressed or s_pressed or a_pressed or d_pressed:
 				if w_pressed:
 					digging_offset_y -= self.origin_break_block_point_y
-					self.facing_direction = Player.DirectionState.UP
+					self.facing_direction = PlayerSprite.DirectionState.UP
 				if s_pressed:
 					digging_offset_y += self.origin_break_block_point_y
-					self.facing_direction = Player.DirectionState.DOWN
+					self.facing_direction = PlayerSprite.DirectionState.DOWN
 			
 				if a_pressed:
 					digging_offset_x -= self.origin_break_block_point_x
-					self.facing_direction = Player.DirectionState.LEFT
+					self.facing_direction = PlayerSprite.DirectionState.LEFT
 				if d_pressed:
 					digging_offset_x += self.origin_break_block_point_x
-					self.facing_direction = Player.DirectionState.RIGHT
+					self.facing_direction = PlayerSprite.DirectionState.RIGHT
 			else:
-				if self.facing_direction == Player.DirectionState.UP:
+				if self.facing_direction == PlayerSprite.DirectionState.UP:
 					digging_offset_y -= self.origin_break_block_point_y
-				elif self.facing_direction == Player.DirectionState.DOWN:
+				elif self.facing_direction == PlayerSprite.DirectionState.DOWN:
 					digging_offset_y += self.origin_break_block_point_y
 
-				elif self.facing_direction == Player.DirectionState.LEFT:
+				elif self.facing_direction == PlayerSprite.DirectionState.LEFT:
 					digging_offset_x -= self.origin_break_block_point_x
-				elif self.facing_direction == Player.DirectionState.RIGHT:
+				elif self.facing_direction == PlayerSprite.DirectionState.RIGHT:
 					digging_offset_x += self.origin_break_block_point_x
 	
 			is_collide = False
 			srect = self.get_rect()
-			for _ in range(Player.BREAK_BLOCK_DISTANCE):
+			for _ in range(PlayerSprite.BREAK_BLOCK_DISTANCE):
 				for block in self.breakable_group or ():
 					is_collide = block.get_rect().collidepoint((srect.centerx + digging_offset_x, srect.centery + digging_offset_y))
 					if is_collide:
-						if self.player_stats.block >= self.player_stats.max_block:
-							raise ValueError("Inventory full")
-						if not self.player_stats.remove_energy(1):
+						# not remove energy when hit on beat
+						if not self.on_beat_hit and not self.player_stats.remove_energy(block.energy_usage):
 							raise ValueError("Energy not enough")
-						self.change_action(Player.AnimationState.DIG)
+						self.change_action(PlayerSprite.AnimationState.DIG)
 						if self.on_beat_hit:
-							block.damage_taken += (self.player_stats.break_damage + self.player_stats.on_beat_extra_damage) * (self.player_stats.break_damage_modifier + self.player_stats.on_beat_extra_damage_modifier)
+							damage_deal = (self.player_stats.break_damage + self.player_stats.on_beat_extra_damage) * (self.player_stats.break_damage_modifier + self.player_stats.on_beat_extra_damage_modifier)
 						else:
-							block.damage_taken += self.player_stats.break_damage * self.player_stats.break_damage_modifier
+							damage_deal = self.player_stats.break_damage * self.player_stats.break_damage_modifier
+						block_break = block.check_damage(damage_deal)
+
+						if block_break and self.player_stats.block >= self.player_stats.max_block and block.gain_block > 0:
+							raise ValueError("Inventory full")
 						
-						if block.damage_taken >= block.max_health:	
+						block.damage_taken += damage_deal
+						
+						if block_break:	
 							if digging_offset_x != 0:
-								self.velocity_x += extract_number_sign(digging_offset_x) * Player.ADDITION_SPEED_WHEN_BREAK_BLOCK
+								self.velocity_x += extract_number_sign(digging_offset_x) * PlayerSprite.ADDITION_SPEED_WHEN_BREAK_BLOCK
 							if digging_offset_y > 0:
-								self.velocity_y += Player.ADDITION_SPEED_WHEN_BREAK_BLOCK
+								self.velocity_y += PlayerSprite.ADDITION_SPEED_WHEN_BREAK_BLOCK
 							block.destroy(self.player_stats)
 						break
 				if is_collide:
@@ -604,6 +618,9 @@ class LayerData:
 		self.energy_addition = -1
 		self.treasure_rate = -1
 		self.treasure_addition = -1
+		self.multiblock_rate = -1
+		self.energy_usage = -1
+
 		combined_weight = 0
 		for x in self.block_tuple:
 			combined_weight += x.spawn_weight
@@ -626,14 +643,25 @@ class LayerData:
 		self.treasure_addition = treasure_addition
 		return self
 
+	def init_multiblock_rate(self, multiblock_rate: float):
+		self.multiblock_rate = multiblock_rate
+		return self
+
+	def init_energy_usage(self, energy_usage: int):
+		self.energy_usage = energy_usage
+		return self
+
 	def check_init(self):
 		required_attrs = [
-			'bomb_rate', 'bomb_damage', 'energy_rate', 'energy_addition', 'treasure_rate', 'treasure_addition'
+			'bomb_rate', 'bomb_damage', 'energy_rate', 'energy_addition', 'treasure_rate', 'treasure_addition', 'multiblock_rate', 'energy_usage'
 		]
 		check_initialization(self, required_attrs)
 
 		if self.bomb_rate + self.energy_rate + self.treasure_rate > 1:
-			raise ValueError("All spawn rate shouldn't exceed 1")
+			raise ValueError("All combined spawn rate shouldn't exceed 1")
+
+		if self.multiblock_rate > 1:
+			raise ValueError("Multiblock rate shouldn't exceed 1")
 
 	def get_random_block(self) -> BlockData:
 		choosen = random_with_rate([x.spawn_weight for x in self.block_tuple])
@@ -654,30 +682,40 @@ class MapData:
 		layer_index = 0
 		layer = self.layer_tuple[layer_index]
 		length = len(self.layer_tuple)
-		for i in range(height):
-			if i >= layer.end_layer:
+		multiblock_occupied_index: list[tuple[int, int]] = []
+		for height_index in range(height):
+			if height_index >= layer.end_layer:
 				layer_index += 1
 				if layer_index >= length:
 					break
 				layer = self.layer_tuple[layer_index]
 			block_x = 0
-			for j in range(width):
+			for width_index in range(width):
+				if (width_index, height_index) in multiblock_occupied_index:
+					block_x += self.block_width
+					continue
 				block_data = layer.get_random_block()
 				choosen = random_with_rate((layer.bomb_rate, layer.energy_rate, layer.treasure_rate))
+				multi_block = False
+				if choosen != 0 and width_index + 1 < width and height_index + 1 < height \
+						and all([pos_index not in multiblock_occupied_index for pos_index in [(width_index, height_index), (width_index + 1, height_index), (width_index, height_index + 1), (width_index + 1, height_index + 1)]]) \
+						and r.random() < layer.multiblock_rate:
+					multi_block = True
+					multiblock_occupied_index.extend([(width_index, height_index), (width_index + 1, height_index), (width_index, height_index + 1), (width_index + 1, height_index + 1)])
 				if choosen == 0:
 					bomb_block = pygame.Surface((self.block_width, self.block_height))
 					bomb_block.fill("red")
-					block = BombBlock(bomb_block, (block_x + map_position[0], block_y + map_position[1]), False, False, layer.bomb_damage)
+					block = BombBlock(bomb_block, (block_x + map_position[0], block_y + map_position[1]), False, False, layer.bomb_damage, layer.energy_usage)
 				elif choosen == 1:
 					energy_block = pygame.Surface((self.block_width, self.block_height))
 					energy_block.fill("green")
-					block = EnergyBlock(energy_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.energy_addition, False)
+					block = EnergyBlock(energy_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.energy_addition, multi_block, layer.energy_usage)
 				elif choosen == 2:
 					treasure_block = pygame.Surface((self.block_width, self.block_height))
 					treasure_block.fill("blue")
-					block = TreasureBlock(treasure_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.treasure_addition, False)
+					block = TreasureBlock(treasure_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.treasure_addition, multi_block, layer.energy_usage)
 				else:
-					block = Block(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health, False, False, False)
+					block = Block(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health, False, False, multi_block, layer.energy_usage)
 				block_group.add(block)
 				block_x += self.block_width
 			block_y += self.block_height
@@ -812,7 +850,7 @@ class RhythmHandler:
 	def stop(self):
 		pygame.mixer.music.stop()
 
-	def update(self, player: Player, pressed_dig: bool):
+	def update(self, player: PlayerSprite, pressed_dig: bool):
 		if not pygame.mixer.music.get_busy():
 			return
 		self.current_music_time = pygame.mixer.music.get_pos()
@@ -885,7 +923,7 @@ def extract_number_sign(value: int | float):
 def in_range(value: int | float, min_val: int | float, max_val: int | float) -> bool:
 	return (min_val < value < max_val)
 
-def random_with_rate(rates: list | tuple) -> int:
+def random_with_rate(rates: list[float] | tuple[float, ...]) -> int:
 	temp_random = r.random()
 	length = len(rates)
 	combined_weight = 0
@@ -916,7 +954,7 @@ def get_spritesheet_data(target_file: str, name: str) -> tuple[tuple[int, int], 
 				return((int(key[1]), int(key[2])), (int(key[3]), int(key[4])))
 	raise ValueError("Name not found from targeted file.")
 
-def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: tuple[int, int], size_per_image: tuple[int, int], scale: int, is_transparent: bool):
+def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: tuple[int, int], size_per_image: tuple[int, int], scale: float | int, is_transparent: bool):
 	width, height = size_per_image
 	if is_transparent:
 		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
@@ -926,7 +964,7 @@ def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: t
 	image = scale_surface(image, scale)
 	return image
 
-def get_surface_from_sprite_sheet2(sprite_sheet_surface: pygame.Surface, start_point: tuple[int, int], size_per_image: tuple[int, int], scale: int, is_transparent: bool):
+def get_surface_from_sprite_sheet2(sprite_sheet_surface: pygame.Surface, start_point: tuple[int, int], size_per_image: tuple[int, int], scale: float | int, is_transparent: bool):
 	if is_transparent:
 		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
 	else:
