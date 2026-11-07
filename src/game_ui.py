@@ -1,13 +1,14 @@
 import pygame
+import game_essential as game
 
 class UIGroup:
-	def __init__(self, ui_list: list[Button]):
+	def __init__(self, ui_list: list[ScalableButton]):
 		self.ui_list = ui_list
 
-	def add(self, ui: Button):
+	def add(self, ui: ScalableButton):
 		self.ui_list.append(ui)
 
-	def add_list(self, ui_list: list[Button]):
+	def add_list(self, ui_list: list[ScalableButton]):
 		self.ui_list += ui_list
 
 	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]):
@@ -18,15 +19,15 @@ class UIGroup:
 		for ui in self.ui_list:
 			ui.draw()
 
-class Button:
+class ScalableButton:
 	def __init__(self, screen: pygame.Surface ,pos: tuple[int, int], btn_surf: pygame.Surface, btn_pressed_surf: pygame.Surface, scale: int):
 		self.screen = screen
 		self.up = btn_surf
 		self.over = btn_pressed_surf
 		width = self.up.get_width()
 		height = self.up.get_height()
-		self.up = pygame.transform.scale(self.up, ((width * scale), (height * scale)))
-		self.over = pygame.transform.scale(self.over, ((width * scale), (height * scale)))
+		self.up = game.scale_surface(self.up, scale)
+		self.over = game.scale_surface(self.over, scale)
 		self.rect =  self.up.get_rect()
 		self.rect.center = pos
 		self.activated = False
