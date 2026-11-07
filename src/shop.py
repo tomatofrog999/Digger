@@ -50,18 +50,18 @@ def main_menu():
     stash_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash.png"), True)
     stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_over.png"), True)
                                                 
-    leave_button = ui.Button(screen, (round(LEAVE_X), round(LEAVE_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE, "bottomright")
-    up1_button = ui.Button(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
-    up2_button = ui.Button(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
-    stash_button = ui.Button(screen, (round(UP_X), round(171)), stash_surf, stash_over_surf, 6, "topleft")
-    energy_button = ui.Button(screen, (round(43), round(302)), energy_surf, energy_over_surf, 6, "topleft")
+    leave_button = ui.ScalableButton(screen, (round(LEAVE_X), round(LEAVE_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE, "bottomright")
+    up1_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
+    up2_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
+    stash_button = ui.ScalableButton(screen, (round(UP_X), round(171)), stash_surf, stash_over_surf, 6, "topleft")
+    energy_button = ui.ScalableButton(screen, (round(43), round(302)), energy_surf, energy_over_surf, 6, "topleft")
 
     #up3_button = ui.Button(screen, (round(UP3_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
     #up4_button = ui.Button(screen, (round(UP4_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topright")
 
-    dealer = ui.Button(screen, (775, 25), dealer_surf, dealer_surf, 8.5, "topright")
-    border1 = ui.Button(screen, (25,25), border1_surf, border1_surf, 1, "topleft")
-    border2 = ui.Button(screen, (525,25), border1_surf, border1_surf, 1, "topleft", flip_x= True)
+    dealer = ui.ScalableButton(screen, (775, 25), dealer_surf, dealer_surf, 8.5, "topright")
+    border1 = ui.ScalableButton(screen, (25,25), border1_surf, border1_surf, 1, "topleft")
+    border2 = ui.ScalableButton(screen, (525,25), border1_surf, border1_surf, 1, "topleft", flip_x= True)
 
     up1_info_text = "Copper Shovel\n--------------------\n+1 Break Damage"
     up2_info_text = "Netherite Shovel\n--------------------\n+2 Break Damage"

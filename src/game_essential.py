@@ -168,6 +168,9 @@ class PlayerStats:
 		self.on_beat_extra_damage_modifier = on_beat_extra_damage_modifier
 		return self
 
+	def refill_energy(self):
+		self.energy = self.max_energy
+
 	def add_block(self, amount: int):
 		if amount < 0:
 			raise ValueError("Amount cannot be negative for add_block function.")
