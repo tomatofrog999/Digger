@@ -1,4 +1,5 @@
 import pygame
+import pygwidgets
 import game_essential as game
 
 class UIGroup:
@@ -11,9 +12,34 @@ class UIGroup:
 	def add_list(self, ui_list: list[ScalableButton]):
 		self.ui_list += ui_list
 
-	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]):
+	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> list[bool]:
+		clicked: list[bool] = []
 		for ui in self.ui_list:
-			ui.update(mouse_pos, events)
+			clicked.append(ui.update(mouse_pos, events))
+		
+		return clicked
+
+	def draw(self):
+		for ui in self.ui_list:
+			ui.draw()
+
+class PygwidgetsUIGroup:
+	def __init__(self, ui_list: list[pygwidgets.TextButton]):
+		self.ui_list = ui_list
+
+	def add(self, ui: pygwidgets.TextButton):
+		self.ui_list.append(ui)
+
+	def add_list(self, ui_list: list[pygwidgets.TextButton]):
+		self.ui_list += ui_list
+
+	def update(self, events: list[pygame.Event]) -> list[bool]:
+		clicked = [False for _ in range(len(self.ui_list))]
+		for i in range(len(self.ui_list)):
+			ui = self.ui_list[i]
+			for event in events:		
+				clicked[i] = True if ui.handleEvent(event) else clicked[i]
+		return clicked
 
 	def draw(self):
 		for ui in self.ui_list:
@@ -37,7 +63,7 @@ class ScalableButton:
 		self.activated = False
 		self.clicked = False
 
-	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]):
+	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> bool:
 		right_click_up = False
 		for event in events:
 			if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -52,6 +78,8 @@ class ScalableButton:
 				self.clicked = True
 		else:
 			self.activated = False
+
+		return self.clicked
         
 	def draw(self):
 		if self.activated:

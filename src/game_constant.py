@@ -1,7 +1,25 @@
-# --- CONSTANT ---
+import pygame
+import os
+
+pygame.init()
+pygame.mixer.init()
+
 FULL_SCREEN = False
 ORIGINAL_SCREEN_WIDTH = 800
 ORIGINAL_SCREEN_HEIGHT = 600
+
+screen_info = pygame.display.Info()
+SCREEN_WIDTH = screen_info.current_w if FULL_SCREEN else ORIGINAL_SCREEN_WIDTH
+SCREEN_HEIGHT = screen_info.current_h if FULL_SCREEN else ORIGINAL_SCREEN_HEIGHT
+SCREEN_WIDTH_HALF = SCREEN_WIDTH // 2
+SCREEN_HEIGHT_HALF = SCREEN_HEIGHT // 2
+CAM_Y_UNDERGROUND_OFFSET = SCREEN_HEIGHT // 8
+
+CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
+BASE_PATH = os.path.dirname(CURRENT_PATH)
+ASSET_PATH = os.path.join(BASE_PATH, "assets")
+IMAGE_PATH = os.path.join(ASSET_PATH, "images")
+MUSIC_PATH = os.path.join(ASSET_PATH, "musics")
 
 FPS = 120
 FPS_UI = 20
@@ -19,6 +37,7 @@ RHYTHM_ERROR_MARGIN_MS = 50
 WRONG_PRESS_COOLDOWN_MS = 300
 RHYTHM_SHOW_LENGTH_MS = 1500 # how much rhythm backward to forward in ms to show on screen
 
+START_POS = (-200, 0)
 START_ENERGY = 100
 START_HEALTH = 3
 START_BREAK_DAMAGE = 1.0
@@ -43,10 +62,12 @@ BLOCK_PER_WIDTH = 15
 BLOCK_PER_HEIGHT = 50
 MINE_POS = (-100, 100)
 
-WORLD_SEED = 1
-SAVE_VERSION = 1.0
+WORLD_START_SEED = 1
+SAVE_VERSION = 1.1
 SAVE_FILE_EXTENSION = ".gamesave"
 AUTO_SAVE_FILE_NAME = "autosave"+SAVE_FILE_EXTENSION
+
+RHYTHM_BAR_WIDTH = SCREEN_WIDTH * 3 // 4
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
