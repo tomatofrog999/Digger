@@ -8,44 +8,6 @@ from game_constant import *
 from collections.abc import Callable
 import math
 
-# --- CONSTANT ---
-FULL_SCREEN = False
-ORIGINAL_SCREEN_WIDTH = 800
-ORIGINAL_SCREEN_HEIGHT = 600
-
-TARGET_TICK = FPS // 4
-
-BLOCK_PER_WIDTH = 15
-BLOCK_PER_HEIGHT = 50
-MINE_POS = (-100, 400)
-
-PLAYER_HITBLOCK_SIZE = (25, 50)
-PLAYER_SURFACE_SIZE = (24, 24)
-PLAYER_SURFACE_SCALE = 3
-PLAYER_IMAGE_OFFSET = (-24, -15)
-
-CAM_SPEED_SCALE = 4.0 # add up this much per distance(pixel)
-CAM_MIN_DISTANCE = 10.0
-
-RHYTHM_ERROR_MARGIN_MS = 50
-WRONG_PRESS_COOLDOWN_MS = 300
-RHYTHM_SHOW_LENGTH_MS = 1500 # how much rhythm backward to forward in ms to show on screen
-
-START_ENERGY = 100
-START_HEALTH = 3
-START_BREAK_DAMAGE = 1.0
-START_BREAK_DAMAGE_MODIFIER = 1.0
-START_ON_BEAT_EXTRA_DMG = 5.0
-START_ON_BEAT_EXTRA_DMG_MODIFIER = 4.0
-START_MAX_INVENTORY = 50
-START_RATE_OF_CONVERTION = 1.0
-
-RHYTHM_BAR_HEIGHT = 40
-RHYTHM_BAR_LINE_RATIO = 0.3
-
-BREAK_EFFECT_LENGTH = 7
-BREAK_EFFECT_WIDTH = 32
-
 def main():
 	pygame.init()
 	pygame.mixer.init()
@@ -57,7 +19,6 @@ def main():
 	SCREEN_HEIGHT_HALF = SCREEN_HEIGHT // 2
 	CAM_Y_UNDERGROUND_OFFSET = SCREEN_HEIGHT // 8
 
-	BTN_CENTER_X = round(SCREEN_WIDTH / 2)
 	PLAY_BTN_Y = round(SCREEN_HEIGHT / 1.55)
 	EXIT_BTN_Y = round(SCREEN_HEIGHT / 1.325)
 	LOGO_Y = round(SCREEN_HEIGHT / 2.85)
@@ -141,8 +102,6 @@ def main():
 
 	MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT)
 
-
-	block_group = MAP1_DATA.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS, WORLD_SEED, [(5, 9)])
 	platform_group = pygame.sprite.Group()
 
 	PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
@@ -153,6 +112,9 @@ def main():
 	PLATFORM1.get_rect().topright = MINE_POS
 
 	PLATFORM2 = game.PlatformSprite(PLATFORM2_SURFACE, (MINE_POS[0] + BLOCK_WIDTH * BLOCK_PER_WIDTH, MINE_POS[1]))
+
+	game_state = game.GameState(MAP1_DATA, WORLD_SEED)
+	game_state.create_new_block_group()
 
 	platform_group.add(PLATFORM1)
 	platform_group.add(PLATFORM2)
@@ -178,13 +140,13 @@ def main():
 				.init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER) \
 				.init_rate_of_convertion(START_RATE_OF_CONVERTION)
 	player_stats.check_init()
-	player = game.PlayerSprite((0, 0), PLAYER_HITBLOCK_SIZE, player_stats).init_screen(screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
-			.init_breakable_group(block_group).init_animation_data(animation_dict) \
+	player = game.PlayerSprite((-200, 0), PLAYER_HITBLOCK_SIZE, player_stats).init_screen(screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
+			.init_breakable_group(game_state.get_block_group()).init_animation_data(animation_dict) \
 			.init_unbreakable_group(platform_group)
 	player.set_surface(player_surface, PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE)
 	player.check_init()
 
-	camera = game.Camera(0, 0).init_dynamic_camera_constant(CAM_Y_UNDERGROUND_OFFSET, CAM_SPEED_SCALE, MINE_POS, CAM_MIN_DISTANCE) \
+	camera = game.Camera(player.get_rect().x, player.get_rect().y).init_dynamic_camera_constant(CAM_Y_UNDERGROUND_OFFSET, CAM_SPEED_SCALE, MINE_POS, CAM_MIN_DISTANCE) \
 			.init_cam_offset(SCREEN_WIDTH_HALF, SCREEN_HEIGHT_HALF)
 	camera.check_init()
 
@@ -194,9 +156,12 @@ def main():
 	rhythm_handler.check_init()
 
 	text_button1 = pygwidgets.TextButton(screen, (SCREEN_WIDTH - 100, 50), "Convert", textColor="white", fontSize=32)
-	text_button2 = pygwidgets.TextButton(screen, (SCREEN_WIDTH - 100, 100), "+Energy", textColor="white", fontSize=32)	
+	text_button2 = pygwidgets.TextButton(screen, (SCREEN_WIDTH - 100, 100), "+Energy", textColor="white", fontSize=32)
 
-	game_state = game.GameState(player_stats, WORLD_SEED)
+	text_button3 = pygwidgets.TextButton(screen, (0, 50), "Save", textColor="white", fontSize=32)
+	text_button4 = pygwidgets.TextButton(screen, (0, 100), "Load", textColor="white", fontSize=32)
+	text_button5 = pygwidgets.TextButton(screen, (0, 150), "Reset", textColor="white", fontSize=32)
+	text_button6 = pygwidgets.TextButton(screen, (0, 200), "Random", textColor="white", fontSize=32)
 
 	dt = 0
 	tick = 0
@@ -211,9 +176,11 @@ def main():
 		pressed_dig = False
 		clicked1 = False
 		clicked2 = False
+		clicked3 = False
+		clicked4 = False
+		clicked5 = False
+		clicked6 = False
 		for event in events:
-			clicked1 = text_button1.handleEvent(event)
-			clicked2 = text_button2.handleEvent(event)
 			if event.type == pygame.QUIT:
 				running = False
 			elif event.type == pygame.KEYDOWN:
@@ -225,6 +192,13 @@ def main():
 						rhythm_handler.pause()
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
+			
+			clicked1 = text_button1.handleEvent(event)
+			clicked2 = text_button2.handleEvent(event)
+			clicked3 = text_button3.handleEvent(event)
+			clicked4 = text_button4.handleEvent(event)
+			clicked5 = text_button5.handleEvent(event)
+			clicked6 = text_button6.handleEvent(event)
 
 		screen.fill("#171722")
 
@@ -261,7 +235,7 @@ def main():
 			display_text1.setText(f"Health: {player_stats.health}/{player_stats.max_health} Block: {player_stats.block}/{player_stats.max_block} Energy: {player_stats.energy}/{player_stats.max_energy} Money: {player_stats.money}")
 			display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
 
-			display_text2.setText(f"{game_state.block_broken}")
+			display_text2.setText(f"{game_state.seed}")
 			display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 100))
 
 			if clicked1:
@@ -270,10 +244,31 @@ def main():
 			if clicked2:
 				player_stats.refill_energy()
 
+			if clicked3:
+				game.save_game(AUTO_SAVE_FILE_NAME, player_stats, game_state)
+
+			if clicked4:
+				try:
+					game.load_game(AUTO_SAVE_FILE_NAME, player_stats, game_state, player)
+				except FileNotFoundError as e:
+					print(str(e))
+
+			if clicked5:
+				game_state.reset_block_broken(player)
+				player_stats.reset()
+
+			if clicked6:
+				game_state.random_seed()
+				game_state.create_new_block_group()
+				player.breakable_group = game_state.block_group
+
+				game_state.reset_block_broken(player)
+				player_stats.reset()
+
 			# --- DRAWING ---
 			cam_offset = camera.get_cam_offset()
 
-			for block in block_group:
+			for block in game_state.get_block_group():
 				if block.image == None:
 					raise TypeError("'image' variable cannot be None type.")
 				screen.blit(block.image, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
@@ -295,6 +290,10 @@ def main():
 			display_text2.draw()
 			text_button1.draw()
 			text_button2.draw()
+			text_button3.draw()
+			text_button4.draw()
+			text_button5.draw()
+			text_button6.draw()
 
 		if in_menu:
 			main_menu_group.draw()

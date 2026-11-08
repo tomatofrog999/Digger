@@ -121,8 +121,65 @@ class PlayerStats:
 		self.break_damage_modifier = -1.0
 		self.on_beat_extra_damage = -1.0
 		self.on_beat_extra_damage_modifier = -1.0
+		self.owned_item = []
 
 		self.game_over = False
+
+	def to_dict(self):
+		return \
+		{
+			"max_health": self.max_health,
+            "health": self.health,
+            "max_energy": self.max_energy,
+            "energy": self.energy,
+            "block": self.block,
+            "max_block": self.max_block,
+            "money": self.money,
+            "rate_of_convertion": self.rate_of_convertion,
+            "break_damage": self.break_damage,
+            "break_damage_modifier": self.break_damage_modifier,
+            "on_beat_extra_damage": self.on_beat_extra_damage,
+            "on_beat_extra_damage_modifier": self.on_beat_extra_damage_modifier,
+            "owned_item": self.owned_item
+		}
+
+	def load_dict(self, new_player_stats: dict[str, int | float | list]):
+		if any([stats not in new_player_stats for stats in ("max_health", "health", "max_energy", "energy",\
+					"block", "max_block", "money", "rate_of_convertion", "break_damage", "break_damage_modifier", \
+					"on_beat_extra_damage", "on_beat_extra_damage_modifier", "owned_item")]) \
+				or not isinstance(new_player_stats["max_health"], int) \
+				or not isinstance(new_player_stats["health"], int) \
+				or not isinstance(new_player_stats["max_energy"], int) \
+				or not isinstance(new_player_stats["energy"], int) \
+				or not isinstance(new_player_stats["block"], int) \
+				or not isinstance(new_player_stats["max_block"], int) \
+				or not isinstance(new_player_stats["money"], int) \
+				or not isinstance(new_player_stats["rate_of_convertion"], float) \
+				or not isinstance(new_player_stats["break_damage"], float) \
+				or not isinstance(new_player_stats["break_damage_modifier"], float) \
+				or not isinstance(new_player_stats["on_beat_extra_damage"], float) \
+				or not isinstance(new_player_stats["on_beat_extra_damage_modifier"], float) \
+				or not isinstance(new_player_stats["owned_item"], list):
+			raise ValueError("Unable to load from dict.")
+		self.max_health = new_player_stats["max_health"]
+		self.health = new_player_stats["health"]
+		self.max_energy = new_player_stats["max_energy"]
+		self.energy = new_player_stats["energy"]
+		self.block = new_player_stats["block"]
+		self.max_block = new_player_stats["max_block"]
+		self.money = new_player_stats["money"]
+		self.rate_of_convertion = new_player_stats["rate_of_convertion"]
+		self.break_damage = new_player_stats["break_damage"]
+		self.break_damage_modifier = new_player_stats["break_damage_modifier"]
+		self.on_beat_extra_damage = new_player_stats["on_beat_extra_damage"]
+		self.on_beat_extra_damage_modifier = new_player_stats["on_beat_extra_damage_modifier"]
+		self.owned_item = new_player_stats["owned_item"]
+
+	def reset(self):
+		self.init_break_damage(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER).init_max_block(START_MAX_INVENTORY) \
+			.init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER) \
+			.init_rate_of_convertion(START_RATE_OF_CONVERTION)
+		self.check_init()
 
 	def check_init(self):
 		required_attrs = [
@@ -937,19 +994,83 @@ class RhythmHandler:
 		pygame.draw.line(screen, "white", (self.line_offset_x + self.topleft_pos[0], self.topleft_pos[1]), (self.line_offset_x + self.topleft_pos[0], self.height + self.topleft_pos[1]), RhythmHandler.LINE_WIDTH)
 
 class GameState:
-	def __init__(self, player_stats: PlayerStats, seed: int):
-		self.player_stats = player_stats
+	MIN_SEED = -2**16
+	MAX_SEED = 2**16 - 1
+	def __init__(self, game_map: MapData, seed: int | None = None):
+		self.game_map = game_map
+		self.block_group: pygame.sprite.Group[Block] | None = None
 		self.block_broken: list[tuple[int, int]] = []
-		self.seed = seed
+		if seed == None:
+			self.random_seed()
+		else:
+			self.seed = seed
+
+	def random_seed(self):
+		self.seed = r.randint(GameState.MIN_SEED, GameState.MAX_SEED)
+
+	def reset_block_broken(self, player_sprite: PlayerSprite):
+		self.block_broken = []
+		self.create_new_block_group()
+		player_sprite.breakable_group = self.block_group
+
+	def get_block_group(self) -> pygame.sprite.Group[Block]:
+		if not isinstance(self.block_group, pygame.sprite.Group):
+			raise TypeError("'block_group' variable need to be pygame.sprite.Group type.")
+		return self.block_group
+
+	def create_new_block_group(self):
+		self.block_group = self.game_map.create_sprite_group(BLOCK_PER_WIDTH, BLOCK_PER_HEIGHT, MINE_POS, self.seed, ignored_block_index=self.block_broken)
+
+	def to_dict(self) -> dict[str, list[tuple[int, int]] | int]:
+		return \
+		{
+			"block_broken": self.block_broken,
+			"seed": self.seed
+		}
+
+	def load_dict(self, new_game_state: dict[str, list[list[int]] | int]):
+		if "block_broken" not in new_game_state or "seed" not in new_game_state or not isinstance(new_game_state["block_broken"], list) or not isinstance(new_game_state["seed"], int):
+			raise ValueError("Unable to load from dict.")
+
+		block_broken = new_game_state["block_broken"]
+		if len(block_broken) > 0 and len(block_broken[0]) == 2:
+			self.block_broken = [(x[0], x[1]) for x in block_broken]
+		else:
+			self.block_broken = []
+		
+		self.seed = new_game_state["seed"]
+		self.create_new_block_group()
 
 def save_game(file_location: str, player_stats: PlayerStats, game_state: GameState):
-	temp_dict = \
+	save_dict = \
 	{
-		"game_version": GAME_VERSION, 
-	    "save_data": {}
+		"save_version": SAVE_VERSION, 
+	    "save_data": 
+		{
+			"player_stats": player_stats.to_dict(),
+			"game_state": game_state.to_dict()
+		}
 	}
 	with open(file_location, "w") as f:
-		f.write(json.dumps(temp_dict))
+		f.write(json.dumps(save_dict))
+
+def load_game(file_location: str, player_stats: PlayerStats, game_state: GameState, player_sprite: PlayerSprite):
+	save_dict = {}
+	with open(file_location) as f:
+		json_content = f.read()
+		save_dict = json.loads(json_content)
+	
+	if any([key not in save_dict for key in ("save_version", "save_data")]) \
+			or any([key not in save_dict["save_data"] for key in ("player_stats", "game_state")]):
+		raise ValueError("Unable to load save game.")
+	if save_dict["save_version"] != SAVE_VERSION:
+		raise ValueError("Unabale to load different version of save game")
+	
+	player_stats.load_dict(save_dict["save_data"]["player_stats"])
+
+	game_state.load_dict(save_dict["save_data"]["game_state"])
+
+	player_sprite.breakable_group = game_state.block_group
 
 def clamp(val: int | float, min_val: int | float, max_val: int | float) -> int | float:
 	return min(max(val, min_val), max_val)
