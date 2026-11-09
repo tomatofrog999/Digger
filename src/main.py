@@ -21,10 +21,13 @@ def main():
 	main_scene = MainScene(screen, scene_manager, player_stats)
 	pause_scene = PauseScene(screen, scene_manager)
 	shop_scene = ShopScene(screen, scene_manager, player_stats)
+	bar_scene = BarScene(screen, scene_manager, player_stats)
 	scene_manager.scenes[MAIN_MENU_SCENE_KEY] = main_menu_scene
 	scene_manager.scenes[MAIN_SCENE_KEY] = main_scene
 	scene_manager.scenes[PAUSE_SCENE_KEY] = pause_scene
+	scene_manager.scenes[BAR_SCENE_KEY] = bar_scene
 	scene_manager.scenes[SHOP_SCENE_KEY] = shop_scene
+	
 	scene_manager.start()
 
 	while scene_manager.running:
@@ -70,7 +73,7 @@ class SceneManager:
 	def __init__(self, start_scene_key: str, scenes: dict[str, Scene] = {}):
 		self.scenes = scenes
 		self.scene_key = start_scene_key
-		self.scenes_key_stack = []
+		self.scenes_stack = [start_scene_key]
 		self.running = False
 
 	def start(self):
@@ -79,7 +82,6 @@ class SceneManager:
 		current_scene.start()
 
 	def stop(self):
-		self.reset_stack()
 		current_scene = self.scenes[self.scene_key]
 		current_scene.stop()
 		self.running = False
@@ -89,41 +91,28 @@ class SceneManager:
 			raise ValueError("Incorrect scene key.")
 		
 		current_scene = self.scenes[self.scene_key]
-
 		if current_scene.can_pause and not reset_stack:
 			current_scene.pause()
 		else:
 			current_scene.stop()
-		self.scenes_key_stack.append(self.scene_key)
 
-		if reset_stack:
-			self.reset_stack()
+		if not reset_stack:
+			self.scenes_stack.append(new_scene_key)
+		else:
+			self.scenes_stack = [new_scene_key]
 		
 		self.scene_key = new_scene_key
 		current_scene = self.scenes[self.scene_key]
 		current_scene.start()
 
-	def reset_stack(self):
-		for key in self.scenes_key_stack:
-			if key not in self.scenes:
-				self.scenes_key_stack.remove(key)
-				continue
-			self.scenes[key].stop()
-		self.scenes_key_stack = []
-
 	def go_back(self):
-		if len(self.scenes_key_stack) == 0:
-			return
 		current_scene = self.scenes[self.scene_key]
 		current_scene.stop()
 
-		old_scene_key = self.scenes_key_stack.pop()
-		old_scene = self.scenes[old_scene_key]
-		if old_scene.can_pause:
-			old_scene.unpause()
-		else:
-			old_scene.start()
-		self.scene_key = old_scene_key
+		self.scenes_stack.pop()
+		old_scene_index = self.scenes_stack[-1]
+		self.scenes[old_scene_index].unpause()
+		self.scene_key = old_scene_index
 
 	def run_loop(self):
 		current_scene = self.scenes[self.scene_key]
@@ -131,9 +120,8 @@ class SceneManager:
 
 
 class MainMenuScene(Scene):
-	PLAY_BUTTON = "play"
-	EXIT_BUTTON = "exit"
-	LOGO_DISPLAY = "logo"
+	PLAY_BUTTON = 0
+	EXIT_BUTTON = 1
 
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager):
 		super().__init__(screen, scene_manager)
@@ -152,27 +140,22 @@ class MainMenuScene(Scene):
 		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
 		
 		# Main Menu Button
+		new_game_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, round(SCREEN_HEIGHT / 1.775)), play_up_surf, play_over_surf, BUTTON_SCALE)
 		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
 		exit_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, EXIT_BTN_Y), exit_up_surf, exit_over_surf, BUTTON_SCALE)
-		logo = ui.ScalableDisplay(screen, (SCREEN_WIDTH_HALF, LOGO_Y), logo_surf, LOGO_SCALE)
+		logo = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, LOGO_Y), logo_surf, logo_surf, LOGO_SCALE)
 	
-		self.main_menu_group = ui.UIGroup({ 
-			MainMenuScene.PLAY_BUTTON: play_button, 
-			MainMenuScene.EXIT_BUTTON: exit_button,
-			MainMenuScene.LOGO_DISPLAY: logo
-		})
-
+		self.main_menu_group = ui.UIGroup([play_button, exit_button, logo, new_game_button])
+		
 	def run_loop(self):
 		super().run_loop()
 		events = pygame.event.get()
 		for event in events:
 			if event.type == pygame.QUIT:
 				self.scene_manager.stop()
-				return
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.stop()
-					return
 
 		self.screen.fill("#171722")
 
@@ -181,10 +164,12 @@ class MainMenuScene(Scene):
 
 		if clicked[MainMenuScene.PLAY_BUTTON]:
 			self.scene_manager.change_scene(MAIN_SCENE_KEY, reset_stack=True)
-			return
 
 		if clicked[MainMenuScene.EXIT_BUTTON]:
 			self.scene_manager.stop()
+
+		if clicked[3]:
+			pass
 
 		self.main_menu_group.draw()
 
@@ -194,9 +179,8 @@ class MainMenuScene(Scene):
 		self.dt = min(self.dt, 1 / FPS_UI)
 
 class PauseScene(Scene):
-	PLAY_BUTTON = "play"
-	EXIT_BUTTON = "exit"
-	LOGO_DISPLAY = "logo"
+	PLAY_BUTTON = 0
+	EXIT_BUTTON = 1
 
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager):
 		super().__init__(screen, scene_manager)
@@ -217,13 +201,10 @@ class PauseScene(Scene):
 		# Main Menu Button
 		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
 		exit_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, EXIT_BTN_Y), exit_up_surf, exit_over_surf, BUTTON_SCALE)
-		logo = ui.ScalableDisplay(screen, (SCREEN_WIDTH_HALF, LOGO_Y), logo_surf, LOGO_SCALE)
-			
-		self.main_menu_group = ui.UIGroup({ 
-			PauseScene.PLAY_BUTTON: play_button, 
-			PauseScene.EXIT_BUTTON: exit_button,
-			PauseScene.LOGO_DISPLAY: logo
-		})
+		logo = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, LOGO_Y), logo_surf, logo_surf, LOGO_SCALE)
+		exit_desktop_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, round(SCREEN_HEIGHT / 1.2)), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+				
+		self.main_menu_group = ui.UIGroup([play_button, exit_button, logo, exit_desktop_button])
 
 	def run_loop(self):
 		super().run_loop()
@@ -231,11 +212,9 @@ class PauseScene(Scene):
 		for event in events:
 			if event.type == pygame.QUIT:
 				self.scene_manager.stop()
-				return
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.go_back()
-					return
 
 		self.screen.fill("#40983C")
 
@@ -244,11 +223,12 @@ class PauseScene(Scene):
 
 		if clicked[MainMenuScene.PLAY_BUTTON]:
 			self.scene_manager.go_back()
-			return
 
 		if clicked[MainMenuScene.EXIT_BUTTON]:
 			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
-			return
+
+		if clicked[3]:
+			self.scene_manager.stop()
 
 		self.main_menu_group.draw()
 
@@ -358,22 +338,13 @@ class MainScene(Scene):
 						.init_screen(self.screen, RHYTHM_BAR_LINE_RATIO, (SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 30))
 		self.rhythm_handler.check_init()
 
-		text_button1 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 50), "Convert", textColor="white", fontSize=32)
-		text_button2 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 100), "+Energy", textColor="white", fontSize=32)
 		
-		text_button3 = pygwidgets.TextButton(self.screen, (0, 50), "Save", textColor="white", fontSize=32)
-		text_button4 = pygwidgets.TextButton(self.screen, (0, 100), "Load", textColor="white", fontSize=32)
-		text_button5 = pygwidgets.TextButton(self.screen, (0, 150), "Reset", textColor="white", fontSize=32)
-		text_button6 = pygwidgets.TextButton(self.screen, (0, 200), "Random", textColor="white", fontSize=32)
+		text_button1 = pygwidgets.TextButton(self.screen, (0, 50), "Save", textColor="white", fontSize=32)
+		text_button2 = pygwidgets.TextButton(self.screen, (0, 100), "Load", textColor="white", fontSize=32)
+		text_button3 = pygwidgets.TextButton(self.screen, (0, 150), "Reset", textColor="white", fontSize=32)
+		text_button4 = pygwidgets.TextButton(self.screen, (0, 200), "Random", textColor="white", fontSize=32)
 		
-		self.ui_group1 = ui.PygwidgetsUIGroup({
-			"btn1": text_button1,
-			"btn2": text_button2,
-			"btn3":text_button3,
-			"btn4":text_button4,
-			"btn5":text_button5, 
-			"btn6":text_button6		  
-		})
+		self.ui_group1 = ui.PygwidgetsUIGroup([text_button1, text_button2, text_button3, text_button4])
 
 		SHOP_SURFACE = pygame.Surface((BLOCK_WIDTH * 5, BLOCK_HEIGHT * 5))
 		SHOP_SURFACE.fill("brown")
@@ -383,11 +354,11 @@ class MainScene(Scene):
 
 	def start(self):
 		super().start()
-
-		game.reset(self.player_stats, self.game_state, self.player)
+		
 		try:
 			game.load_game(AUTO_SAVE_FILE_NAME, self.player_stats, self.game_state, self.player)
 		except FileNotFoundError as e:
+			game.reset(self.player_stats, self.game_state, self.player)
 			print(str(e))
 		
 		self.rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
@@ -396,21 +367,18 @@ class MainScene(Scene):
 		super().run_loop()
 		events = pygame.event.get()
 		pressed_dig = False
-		pressed_enter = False
 		ui_group1_clicked = self.ui_group1.update(events)
 		for event in events:
 			if event.type == pygame.QUIT:
 				self.scene_manager.stop()
-				return
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.change_scene(PAUSE_SCENE_KEY)
-					return
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
-				if event.key == pygame.K_RETURN:
-					pressed_enter = True
-
+					if self.shop.get_rect().colliderect(self.player.get_rect()): 
+						self.scene_manager.change_scene(BAR_SCENE_KEY, reset_stack=False)
+	
 		self.screen.fill("#171722")
 		
 		keys = pygame.key.get_pressed()
@@ -418,21 +386,15 @@ class MainScene(Scene):
 
 		self.rhythm_handler.update(self.player, pressed_dig)
 
-		try:
-			self.player.update(keys, events, self.dt, self.game_state)
-		except ValueError as e:
-			print(str(e))
+		self.player.update(keys, events, self.dt, self.game_state)
 
 		if self.player_stats.game_over:
 			print("Game Over")
 			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
-			return
 		
 		# Update camera movement
 		player_rect = self.player.get_rect()
-		
 		self.camera.update(player_rect, self.dt)
-		
 
 		self.display_text1.setText(f"Health: {self.player_stats.health}/{self.player_stats.max_health} Block: {self.player_stats.block}/{self.player_stats.max_block} Energy: {self.player_stats.energy}/{self.player_stats.max_energy} Money: {self.player_stats.money}")
 		self.display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
@@ -440,36 +402,26 @@ class MainScene(Scene):
 		self.display_text2.setText(f"{self.game_state.seed}")
 		self.display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 100))
 
-		if ui_group1_clicked["btn1"]:
-			self.player_stats.convert_block_to_money()
-
-		if ui_group1_clicked["btn2"]:
-			self.player_stats.refill_energy()
-
-		if ui_group1_clicked["btn3"]:
+		if ui_group1_clicked[0]:
 			game.save_game(AUTO_SAVE_FILE_NAME, self.player_stats, self.game_state, self.player)
 
-		if ui_group1_clicked["btn4"]:
+		if ui_group1_clicked[1]:
 			try:
 				game.load_game(AUTO_SAVE_FILE_NAME, self.player_stats, self.game_state, self.player)
 			except FileNotFoundError as e:
 				print(str(e))
 
-		if ui_group1_clicked["btn5"]:
+		if ui_group1_clicked[2]:
 			self.game_state.reset_block_broken()
 			self.player_stats.reset()
 			self.player.reset()
 
-		if ui_group1_clicked["btn6"]:
+		if ui_group1_clicked[3]:
 			self.game_state.random_seed()
 			self.game_state.create_new_block_group()
 
 			self.game_state.reset_block_broken()
 			self.player_stats.reset()
-
-		if pressed_enter and self.shop.get_rect().colliderect(self.player.get_rect()):
-			self.scene_manager.change_scene(SHOP_SCENE_KEY)
-			return
 
 		# --- DRAWING ---
 		cam_offset = self.camera.get_cam_offset()
@@ -519,6 +471,7 @@ class MainScene(Scene):
 		self.rhythm_handler.stop()
 
 class ShopScene(Scene):
+
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
@@ -537,7 +490,7 @@ class ShopScene(Scene):
 		up2_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "up2_over.png"), True)
 		dealer_surf = game.load_picture(os.path.join(IMAGE_PATH, "dealer.png"), True)
 		border1_surf = game.load_picture(os.path.join(IMAGE_PATH, "border1.png"), True)
-		border1_surf = game.scale_surface(border1_surf, (6, 9.85))
+		border1_surf = pygame.transform.scale(border1_surf, ((border1_surf.get_width()*6, border1_surf.get_height()*9.85)))
 		energy_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy.png"), True)
 		energy_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_over.png"), True)
 		stash_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash.png"), True)
@@ -548,13 +501,14 @@ class ShopScene(Scene):
 		up2_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
 		stash_button = ui.ScalableButton(screen, (round(UP_X), round(171)), stash_surf, stash_over_surf, 6, "topleft")
 		energy_button = ui.ScalableButton(screen, (round(43), round(302)), energy_surf, energy_over_surf, 6, "topleft")
-		
+		max_hp_button = pygwidgets.TextButton(screen, ((round(174), round(302))), "+MAX HP", fontSize=10)
 		#up3_button = ui.Button(screen, (round(UP3_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
 		#up4_button = ui.Button(screen, (round(UP4_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topright")
 		
-		dealer = ui.ScalableDisplay(screen, (775, 25), dealer_surf, 8.5, "topright")
-		border1 = ui.ScalableDisplay(screen, (25,25), border1_surf, 1, "topleft")
-		border2 = ui.ScalableDisplay(screen, (525,25), border1_surf, 1, "topleft", flip_x= True)
+		dealer = ui.ScalableButton(screen, (775, 25), dealer_surf, dealer_surf, 8.5, "topright")
+		border1 = ui.ScalableButton(screen, (25,25), border1_surf, border1_surf, 1, "topleft")
+		border2 = ui.ScalableButton(screen, (525,25), border1_surf, border1_surf, 1, "topleft", flip_x= True)
+
 		
 		up1_info_text = "Copper Shovel\n--------------------\n+1 Break Damage"
 		up2_info_text = "Netherite Shovel\n--------------------\n+2 Break Damage"
@@ -566,16 +520,8 @@ class ShopScene(Scene):
 		self.stash_info = pygwidgets.DisplayText(screen, (598,250), stash_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
 		self.energy_info = pygwidgets.DisplayText(screen, (598,250), energy_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
 		
-		self.shop_group = ui.UIGroup({
-			"leave": leave_button,
-			"up1": up1_button, 
-			"up2": up2_button, 
-			"dealer": dealer, 
-			"border": border1, 
-			"border2": border2, 
-			"stash_button": stash_button, 
-			"energy_button": energy_button
-		})
+		self.shop_group = ui.UIGroup([leave_button, up1_button, up2_button, dealer, border1, border2, stash_button, energy_button])
+		self.hp = ui.PygwidgetsUIGroup([max_hp_button])
 
 	def run_loop(self):
 		super().run_loop()
@@ -583,43 +529,105 @@ class ShopScene(Scene):
 		
 		mouse_pos = pygame.mouse.get_pos()
 		clicked = self.shop_group.update(mouse_pos, events)
+		clicked2 = self.hp.update(events)
 		
 		self.screen.fill("#000000")
 		for event in events:
-			if event.type == pygame.QUIT:
-				self.scene_manager.stop()
-				return
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
-					self.scene_manager.go_back()
-					return
+					self.scene_manager.stop()
+			if event.type == pygame.QUIT:
+				self.scene_manager.stop()
+
+		if clicked2[0]:
+			if self.player_stats.buy(5):
+				self.player_stats.add_max_health(1)
 		
-		if clicked["leave"]:
+		if clicked[0]:
 			self.scene_manager.go_back()
-			return
 		
-		if isinstance(self.shop_group.ui_dict["up1"], ui.ScalableButton) and self.shop_group.ui_dict["up1"].activated:
+		if self.shop_group.ui_list[1].activated:
 			self.up1_info.draw()
-			if clicked["up1"]:
-				self.player_stats.break_damage += 1
-		
-		if isinstance(self.shop_group.ui_dict["up2"], ui.ScalableButton) and self.shop_group.ui_dict["up2"].activated:
+			if clicked[1]:
+				if self.player_stats.buy(5):		
+					self.player_stats.break_damage += 1
+					print("Bought Copper Shovel")
+			
+		if self.shop_group.ui_list[2].activated:
 			self.up2_info.draw()
-			if clicked["up2"]:
-				self.player_stats.break_damage += 2
+			if clicked[2]:
+				if self.player_stats.buy(10):
+					self.player_stats.break_damage += 2
 		
-		if isinstance(self.shop_group.ui_dict["stash_button"], ui.ScalableButton) and self.shop_group.ui_dict["stash_button"].activated:
+		if self.shop_group.ui_list[6].activated:
 			self.stash_info.draw()
-			if clicked["stash_button"]:
-				self.player_stats.max_block += 50
-				print(f"{self.player_stats.block}/{self.player_stats.max_block}")
-		
-		if isinstance(self.shop_group.ui_dict["energy_button"], ui.ScalableButton) and self.shop_group.ui_dict["energy_button"].activated:
+			if clicked[6]:
+				if self.player_stats.buy(10):
+					self.player_stats.max_block += 50
+					print(f"{self.player_stats.block}/{self.player_stats.max_block}")
+			
+		if self.shop_group.ui_list[7].activated:
 			self.energy_info.draw()
-			if clicked["energy_button"]:
-				self.player_stats.max_energy += 50
+			if clicked[7]:
+				if self.player_stats.buy(10):
+					self.player_stats.max_energy += 50
 		
 		self.shop_group.draw()
+		self.hp.draw()
+
+		pygame.display.flip()
+
+		self.dt = self.clock.tick(FPS) / 1000
+		self.dt = min(self.dt, 1 / FPS)
+
+class BarScene(Scene):
+
+	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
+		super().__init__(screen, scene_manager)
+		self.player_stats = player_stats
+		
+		text_button1 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 50), "Convert", textColor="white", fontSize=32)
+		text_button2 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 100), "+Energy", textColor="white", fontSize=32)
+		text_button3 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 150), "Shop", textColor="white", fontSize=32)
+		text_button4 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 200), "Leave", textColor="white", fontSize=32)
+		text_button5 = pygwidgets.TextButton(self.screen, (SCREEN_WIDTH - 100, 250), "+health", textColor="white", fontSize=32)
+				
+
+		self.bar_group = ui.PygwidgetsUIGroup([text_button1, text_button2, text_button3, text_button4, text_button5]) 
+		
+	def run_loop(self):
+		super().run_loop()
+		events = pygame.event.get()
+	
+		clicked = self.bar_group.update(events)
+		
+		self.screen.fill("#000000")
+		for event in events:
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					self.scene_manager.stop()
+			if event.type == pygame.QUIT:
+				self.scene_manager.stop()
+		
+		if clicked[0]:
+			self.player_stats.convert_block_to_money()
+
+		if clicked[1]:
+			if self.player_stats.buy(5):
+				self.player_stats.refill_energy()
+
+		if clicked[2]:
+			self.scene_manager.change_scene(SHOP_SCENE_KEY, reset_stack=False)
+
+		if clicked[3]:
+			self.scene_manager.go_back()
+
+		if clicked[4]:
+			if self.player_stats.buy(5):
+				self.player_stats.add_health(1)
+
+		
+		self.bar_group.draw()
 
 		pygame.display.flip()
 
