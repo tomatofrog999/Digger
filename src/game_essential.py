@@ -121,7 +121,6 @@ class PlayerStats:
 		self.break_damage_modifier = -1.0
 		self.on_beat_extra_damage = -1.0
 		self.on_beat_extra_damage_modifier = -1.0
-		self.owned_item = []
 
 		self.game_over = False
 
@@ -139,14 +138,13 @@ class PlayerStats:
             "break_damage": self.break_damage,
             "break_damage_modifier": self.break_damage_modifier,
             "on_beat_extra_damage": self.on_beat_extra_damage,
-            "on_beat_extra_damage_modifier": self.on_beat_extra_damage_modifier,
-            "owned_item": self.owned_item
+            "on_beat_extra_damage_modifier": self.on_beat_extra_damage_modifier
 		}
 
 	def load_dict(self, new_player_stats: dict[str, int | float | list]):
 		if any([stats not in new_player_stats for stats in ("max_health", "health", "max_energy", "energy",\
 					"block", "max_block", "money", "rate_of_convertion", "break_damage", "break_damage_modifier", \
-					"on_beat_extra_damage", "on_beat_extra_damage_modifier", "owned_item")]) \
+					"on_beat_extra_damage", "on_beat_extra_damage_modifier")]) \
 				or not isinstance(new_player_stats["max_health"], int) \
 				or not isinstance(new_player_stats["health"], int) \
 				or not isinstance(new_player_stats["max_energy"], int) \
@@ -158,8 +156,7 @@ class PlayerStats:
 				or not isinstance(new_player_stats["break_damage"], float) \
 				or not isinstance(new_player_stats["break_damage_modifier"], float) \
 				or not isinstance(new_player_stats["on_beat_extra_damage"], float) \
-				or not isinstance(new_player_stats["on_beat_extra_damage_modifier"], float) \
-				or not isinstance(new_player_stats["owned_item"], list):
+				or not isinstance(new_player_stats["on_beat_extra_damage_modifier"], float):
 			raise ValueError("Unable to load from dict.")
 		self.max_health = new_player_stats["max_health"]
 		self.health = new_player_stats["health"]
@@ -173,7 +170,6 @@ class PlayerStats:
 		self.break_damage_modifier = new_player_stats["break_damage_modifier"]
 		self.on_beat_extra_damage = new_player_stats["on_beat_extra_damage"]
 		self.on_beat_extra_damage_modifier = new_player_stats["on_beat_extra_damage_modifier"]
-		self.owned_item = new_player_stats["owned_item"]
 
 	def reset(self):
 		self.max_health = START_HEALTH
@@ -188,7 +184,7 @@ class PlayerStats:
 		self.break_damage_modifier = START_BREAK_DAMAGE_MODIFIER
 		self.on_beat_extra_damage = START_ON_BEAT_EXTRA_DMG
 		self.on_beat_extra_damage_modifier = START_ON_BEAT_EXTRA_DMG_MODIFIER
-		self.owned_item = []
+		self.game_over = False
 		self.check_init()
 
 	def check_init(self):
@@ -268,7 +264,7 @@ class PlayerStats:
 			raise ValueError("Amount cannot be negative for add_money function.")
 		self.money = self.money + amount
 	
-	def remove_money(self, amount: int):
+	def remove_money(self, amount: int) -> bool:
 		if amount < 0:
 			raise ValueError("Amount cannot be negative for remove_money function.")
 		new_amount = self.money - amount
@@ -277,6 +273,9 @@ class PlayerStats:
 		else:
 			self.money = new_amount
 			return True
+
+	def buy(self, price: int) -> bool:
+		return self.remove_money(price)
 	
 	def add_health(self, amount: int):
 		if amount < 0:
@@ -300,11 +299,6 @@ class PlayerStats:
 	def convert_block_to_money(self):
 		self.money += round(self.block * self.rate_of_convertion)
 		self.block = 0
-
-	def buy(self, price: int):
-		if self.money >= price:
-			self.money -= price
-			return True
 
 class PlayerSprite(pygame.sprite.Sprite):
 	class AnimationData:
@@ -683,10 +677,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 	def update(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event], dt: float, game_state: GameState):
 		self.handle_movement(keys, events, dt)
 		self.update_position_and_collision(dt)
-		try:
-			self.handle_break_block(keys, events, game_state)
-		except ValueError as e:
-			print(str(e))
+		self.handle_break_block(keys, events, game_state)
 
 	def to_dict(self):
 		return \
@@ -855,7 +846,6 @@ class Camera:
 
 		cam_displacement_left = CAM_CUTOFF_LEFT - (player_rect.x - SCREEN_WIDTH_HALF)
 		cam_displacement_right = CAM_CUTOFF_RIGHT - (player_rect.x + SCREEN_WIDTH_HALF)
-		#print(f"{player_rect.x} | {CAM_CUTOFF_LEFT} | {cam_displacement_left}", end="\r")
 
 		cam_distance_x = abs(cam_displacement_x)
 		cam_distance_y = abs(cam_displacement_y)
@@ -1100,6 +1090,7 @@ def load_game(file_location: str, player_stats: PlayerStats, game_state: GameSta
 	if save_dict["save_version"] != SAVE_VERSION:
 		raise ValueError("Unable to load different version of save game")
 
+	player_sprite.reset()
 	save_data = save_dict["save_data"]
 	player_stats.load_dict(save_data["player_stats"])
 	player_sprite.load_dict(save_data["player_sprite"])
@@ -1176,9 +1167,12 @@ def check_initialization(obj: object, required_attrs: list[str]):
 	if any(uninitialized):
 		raise ValueError(f"Object are not initialized properly. Attributes that are not initialized: {uninitialized}.")
 
-def scale_surface(surface: pygame.Surface, scale: float):
+def scale_surface(surface: pygame.Surface, scale: float | int | tuple[float | int, float | int]):
 	width, height = surface.get_rect().size
-	return pygame.transform.scale(surface, (round(width * scale), round(height * scale)))
+	if isinstance(scale, float | int):
+		return pygame.transform.scale(surface, (round(width * scale), round(height * scale)))
+	else:
+		return pygame.transform.scale(surface, (round(width * scale[0]), round(height * scale[1])))
 
 def tuple_add(t1: tuple, t2: tuple):
 	if len(t1) != len(t2):

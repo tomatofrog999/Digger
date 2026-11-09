@@ -77,6 +77,7 @@ MAIN_SCENE_KEY = "main_scene"
 MAIN_MENU_SCENE_KEY = "main_menu_scene"
 PAUSE_SCENE_KEY = "pause_scene"
 SHOP_SCENE_KEY = "shop_scene"
+BAR_SCENE_KEY = "bar_scene"
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
