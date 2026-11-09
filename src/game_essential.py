@@ -689,7 +689,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 		if "position" not in new_player_data or not isinstance(new_player_data["position"], list):
 			raise ValueError("Unable to load from dict.")
 		temp_position = new_player_data["position"]
-		self.reset()
+		
 		if len(temp_position) == 2:
 			self.get_rect().topleft = (temp_position[0], temp_position[1])
 		else:
@@ -832,53 +832,33 @@ class Camera:
 		self.x = float(pos[0])
 		self.y = float(pos[1])
 
-		self.cam_y_underground_offset = -1
-		self.cam_speed_scale = -1
-		self.mine_pos = (0, 0)
-		self.cam_min_distance = -1
-		self.screen_width_half = -1
-		self.screen_height_half = -1
-
-	def init_dynamic_camera_constant(self, cam_y_underground_offset: int, cam_speed_scale: float, mine_pos: tuple[int, int], cam_min_distance: float):
-		self.cam_y_underground_offset = cam_y_underground_offset
-		self.cam_speed_scale = cam_speed_scale
-		self.mine_pos = mine_pos
-		self.cam_min_distance = cam_min_distance
-		return self
-
-	def init_cam_offset(self, screen_width_half: int, screen_height_half: int):
-		self.screen_width_half = screen_width_half
-		self.screen_height_half = screen_height_half
-		return self
-
-	def check_init(self):
-		required_attrs = [
-			'cam_y_underground_offset', 'cam_speed_scale', 'cam_min_distance', 'screen_width_half', 'screen_height_half'
-		]
-		check_initialization(self, required_attrs)
-
 	def get_cam_offset(self) -> tuple[float, float]:
 		# When camera move, the object will move opposite camera. So, we negate the camera for x and y
 		# Then we add half of screen to make camera focus on center of screen not on topleft of screen
-		cam_offset_x = -self.x + self.screen_width_half
-		cam_offset_y = -self.y + self.screen_height_half
+		cam_offset_x = -self.x + SCREEN_WIDTH_HALF
+		cam_offset_y = -self.y + SCREEN_HEIGHT_HALF
 		return (cam_offset_x, cam_offset_y)
 
 	def update(self, player_rect: pygame.FRect, dt: float):
 		cam_displacement_x = player_rect.x - self.x
-		addition_height = self.cam_y_underground_offset if player_rect.bottom > self.mine_pos[1] else -self.cam_y_underground_offset
+		addition_height = CAM_Y_UNDERGROUND_OFFSET if player_rect.bottom > MINE_POS[1] else -CAM_Y_UNDERGROUND_OFFSET
 		cam_displacement_y = (player_rect.y + addition_height) - self.y
+
+		cam_displacement_left = CAM_CUTOFF_LEFT - (player_rect.x - SCREEN_WIDTH_HALF)
+		cam_displacement_right = CAM_CUTOFF_RIGHT - (player_rect.x + SCREEN_WIDTH_HALF)
+		print(f"{player_rect.x} | {CAM_CUTOFF_LEFT} | {cam_displacement_left}", end="\r")
+
 		cam_distance_x = abs(cam_displacement_x)
 		cam_distance_y = abs(cam_displacement_y)
-		if cam_displacement_x > self.cam_min_distance:
-			self.x += min(cam_distance_x, self.cam_speed_scale * cam_distance_x * dt)
-		elif cam_displacement_x < -self.cam_min_distance:
-			self.x -= min(cam_distance_x, self.cam_speed_scale * cam_distance_x * dt)
+		if cam_displacement_x > CAM_MIN_DISTANCE:
+			self.x += min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt) if cam_displacement_right > 0 else 0
+		elif cam_displacement_x < -CAM_MIN_DISTANCE:
+			self.x -= min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt) if cam_displacement_left < 0 else 0
 		
-		if cam_displacement_y > self.cam_min_distance:
-			self.y += min(cam_distance_y, self.cam_speed_scale * cam_distance_y * dt)
-		elif cam_displacement_y < -self.cam_min_distance:
-			self.y -= min(cam_distance_y, self.cam_speed_scale * cam_distance_y * dt)
+		if cam_displacement_y > CAM_MIN_DISTANCE:
+			self.y += min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
+		elif cam_displacement_y < -CAM_MIN_DISTANCE:
+			self.y -= min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
 
 class RhythmHandler:
 	LINE_WIDTH = 2
@@ -1116,6 +1096,11 @@ def load_game(file_location: str, player_stats: PlayerStats, game_state: GameSta
 	player_sprite.load_dict(save_data["player_sprite"])
 	game_state.load_dict(save_data["game_state"])
 
+def reset(player_stats: PlayerStats, game_state: GameState, player_sprite: PlayerSprite):
+	player_stats.reset()
+	game_state.reset_block_broken()
+	player_sprite.reset()
+
 def clamp(val: int | float, min_val: int | float, max_val: int | float) -> int | float:
 	return min(max(val, min_val), max_val)
 
@@ -1185,6 +1170,18 @@ def check_initialization(obj: object, required_attrs: list[str]):
 def scale_surface(surface: pygame.Surface, scale: float):
 	width, height = surface.get_rect().size
 	return pygame.transform.scale(surface, (round(width * scale), round(height * scale)))
+
+def tuple_add(t1: tuple, t2: tuple):
+	if len(t1) != len(t2):
+		raise ValueError("Length not equals.")
+
+	return tuple([t1[i] + t2[i] for i in range(len(t1))])
+
+def tuple_multiply(t1: tuple, constant: float | int):
+	return tuple([t1[i] * constant for i in range(len(t1))])
+
+def tuple_divide(t1: tuple, constant: float | int):
+	return tuple([t1[i] * constant for i in range(len(t1))])
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")

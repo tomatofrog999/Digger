@@ -11,11 +11,20 @@ def main():
 	screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 	pygame.display.set_caption("Digger Game")
 
-	scene_manager = SceneManager(0)
+	player_stats = game.PlayerStats().init_break_damage(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER).init_max_block(START_MAX_INVENTORY) \
+				.init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER) \
+				.init_rate_of_convertion(START_RATE_OF_CONVERTION)
+	player_stats.check_init()
+
+	scene_manager = SceneManager(SHOP_SCENE_KEY)
 	main_menu_scene = MainMenuScene(screen, scene_manager)
-	main_scene = MainScene(screen, scene_manager)
+	main_scene = MainScene(screen, scene_manager, player_stats)
 	pause_scene = PauseScene(screen, scene_manager)
-	scene_manager.scenes.extend([main_menu_scene, main_scene, pause_scene])
+	shop_scene = ShopScene(screen, scene_manager, player_stats)
+	scene_manager.scenes[MAIN_MENU_SCENE_KEY] = main_menu_scene
+	scene_manager.scenes[MAIN_SCENE_KEY] = main_scene
+	scene_manager.scenes[PAUSE_SCENE_KEY] = pause_scene
+	scene_manager.scenes[SHOP_SCENE_KEY] = shop_scene
 	scene_manager.start()
 
 	while scene_manager.running:
@@ -58,52 +67,52 @@ class Scene:
 		self.is_pause = False
 
 class SceneManager:
-	def __init__(self, start_scene_index: int, scenes: list[Scene] = []):
+	def __init__(self, start_scene_key: str, scenes: dict[str, Scene] = {}):
 		self.scenes = scenes
-		self.scene_index = start_scene_index
-		self.scenes_stack = [start_scene_index]
+		self.scene_key = start_scene_key
+		self.scenes_stack = [start_scene_key]
 		self.running = False
 
 	def start(self):
 		self.running = True
-		current_scene = self.scenes[self.scene_index]
+		current_scene = self.scenes[self.scene_key]
 		current_scene.start()
 
 	def stop(self):
-		current_scene = self.scenes[self.scene_index]
+		current_scene = self.scenes[self.scene_key]
 		current_scene.stop()
 		self.running = False
 
-	def change_scene(self, new_scene_index: int, reset_stack: bool = False):
-		if new_scene_index >= len(self.scenes) or new_scene_index < 0 or new_scene_index == self.scene_index:
-			raise ValueError("Incorrect scene index.")
+	def change_scene(self, new_scene_key: str, reset_stack: bool = False):
+		if new_scene_key not in self.scenes:
+			raise ValueError("Incorrect scene key.")
 		
-		current_scene = self.scenes[self.scene_index]
+		current_scene = self.scenes[self.scene_key]
 		if current_scene.can_pause and not reset_stack:
 			current_scene.pause()
 		else:
 			current_scene.stop()
 
 		if not reset_stack:
-			self.scenes_stack.append(new_scene_index)
+			self.scenes_stack.append(new_scene_key)
 		else:
-			self.scenes_stack = [new_scene_index]
+			self.scenes_stack = [new_scene_key]
 		
-		self.scene_index = new_scene_index
-		current_scene = self.scenes[self.scene_index]
+		self.scene_key = new_scene_key
+		current_scene = self.scenes[self.scene_key]
 		current_scene.start()
 
 	def go_back(self):
-		current_scene = self.scenes[self.scene_index]
+		current_scene = self.scenes[self.scene_key]
 		current_scene.stop()
 
 		self.scenes_stack.pop()
 		old_scene_index = self.scenes_stack[-1]
 		self.scenes[old_scene_index].unpause()
-		self.scene_index = old_scene_index
+		self.scene_key = old_scene_index
 
 	def run_loop(self):
-		current_scene = self.scenes[self.scene_index]
+		current_scene = self.scenes[self.scene_key]
 		current_scene.run_loop()
 
 
@@ -150,12 +159,7 @@ class MainMenuScene(Scene):
 		clicked = self.main_menu_group.update(mouse_pos, events)
 
 		if clicked[MainMenuScene.PLAY_BUTTON]:
-			target_index = -1
-			for i in range(len(self.scene_manager.scenes)):
-				if isinstance(self.scene_manager.scenes[i], MainScene):
-					target_index = i
-					break
-			self.scene_manager.change_scene(target_index, reset_stack=True)
+			self.scene_manager.change_scene(MAIN_SCENE_KEY, reset_stack=True)
 
 		if clicked[MainMenuScene.EXIT_BUTTON]:
 			self.scene_manager.stop()
@@ -213,12 +217,7 @@ class PauseScene(Scene):
 			self.scene_manager.go_back()
 
 		if clicked[MainMenuScene.EXIT_BUTTON]:
-			target_index = -1
-			for i in range(len(self.scene_manager.scenes)):
-				if isinstance(self.scene_manager.scenes[i], MainMenuScene):
-					target_index = i
-					break
-			self.scene_manager.change_scene(target_index, reset_stack=True)
+			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
 
 		self.main_menu_group.draw()
 
@@ -228,9 +227,10 @@ class PauseScene(Scene):
 		self.dt = min(self.dt, 1 / FPS_UI)
 
 class MainScene(Scene):
-	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager):
+	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.can_pause = True
+		self.player_stats = player_stats
 
 		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_PATH, "break_effect.png"), True)
 		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "tiles_spritesheet.png"), True)
@@ -283,7 +283,7 @@ class MainScene(Scene):
 		
 		self.platform_group = pygame.sprite.Group()
 		
-		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
+		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
 		PLATFORM1_SURFACE.fill("brown")
 		PLATFORM2_SURFACE = PLATFORM1_SURFACE.copy()
 		
@@ -315,18 +315,13 @@ class MainScene(Scene):
 			game.PlayerSprite.AnimationState.DIG: game.PlayerSprite.AnimationData(17, 3, 100, False, 3)
 		}
 		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "doux.png"), True)
-		self.player_stats = game.PlayerStats().init_break_damage(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER).init_max_block(START_MAX_INVENTORY) \
-					.init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER) \
-					.init_rate_of_convertion(START_RATE_OF_CONVERTION)
-		self.player_stats.check_init()
+		
 		self.player = game.PlayerSprite(START_POS, PLAYER_HITBLOCK_SIZE, self.player_stats, self.game_state).init_screen(self.screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
 				.init_animation_data(ANIMATION_DICT)
 		self.player.set_surface(PLAYER_SURFACE, PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE)
 		self.player.check_init()
 		
-		self.camera = game.Camera(START_POS).init_dynamic_camera_constant(CAM_Y_UNDERGROUND_OFFSET, CAM_SPEED_SCALE, MINE_POS, CAM_MIN_DISTANCE) \
-				.init_cam_offset(SCREEN_WIDTH_HALF, SCREEN_HEIGHT_HALF)
-		self.camera.check_init()
+		self.camera = game.Camera(START_POS)
 		
 		self.rhythm_handler = game.RhythmHandler(os.path.join(MUSIC_PATH, "loudness_log.txt"), RHYTHM_ERROR_MARGIN_MS, RHYTHM_BAR_WIDTH, RHYTHM_BAR_HEIGHT, RHYTHM_SHOW_LENGTH_MS, WRONG_PRESS_COOLDOWN_MS) \
 						.init_screen(self.screen, RHYTHM_BAR_LINE_RATIO, (SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 30))
@@ -342,13 +337,21 @@ class MainScene(Scene):
 		
 		self.ui_group1 = ui.PygwidgetsUIGroup([text_button1, text_button2, text_button3, text_button4, text_button5, text_button6])
 
+		SHOP_SURFACE = pygame.Surface((BLOCK_WIDTH * 5, BLOCK_HEIGHT * 5))
+		SHOP_SURFACE.fill("brown")
+
+		self.shop = game.PlatformSprite(SHOP_SURFACE, (0, 0))
+		self.shop.get_rect().bottomleft =(MINE_POS[0] + BLOCK_WIDTH * (BLOCK_PER_WIDTH + 2), MINE_POS[1])
+
 	def start(self):
 		super().start()
+		
 		try:
 			game.load_game(AUTO_SAVE_FILE_NAME, self.player_stats, self.game_state, self.player)
 		except FileNotFoundError as e:
+			game.reset(self.player_stats, self.game_state, self.player)
 			print(str(e))
-
+		
 		self.rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
 
 	def run_loop(self):
@@ -361,12 +364,7 @@ class MainScene(Scene):
 				self.scene_manager.stop()
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
-					target_index = -1
-					for i in range(len(self.scene_manager.scenes)):
-						if isinstance(self.scene_manager.scenes[i], PauseScene):
-							target_index = i
-							break
-					self.scene_manager.change_scene(target_index)
+					self.scene_manager.change_scene(PAUSE_SCENE_KEY)
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
 
@@ -381,7 +379,7 @@ class MainScene(Scene):
 
 		if self.player_stats.game_over:
 			print("Game Over")
-			running = False
+			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
 		
 		# Update camera movement
 		player_rect = self.player.get_rect()
@@ -434,8 +432,12 @@ class MainScene(Scene):
 
 		for platform in self.platform_group:
 			if platform.image == None:
-				raise TypeError("'platform' variable cannot be None type.")
+				raise TypeError("'image' variable cannot be None type.")
 			self.screen.blit(platform.image, (round(platform.get_rect().x + cam_offset[0]), round(platform.get_rect().y + cam_offset[1])))
+
+		if self.shop.image == None:
+			raise TypeError("'image' variable cannot be None type.")
+		self.screen.blit(self.shop.image, (round(self.shop.get_rect().x + cam_offset[0]), round(self.shop.get_rect().y + cam_offset[1])))
 
 		self.player.draw(cam_offset)
 
@@ -462,6 +464,105 @@ class MainScene(Scene):
 	def stop(self):
 		super().stop()
 		self.rhythm_handler.stop()
+
+class ShopScene(Scene):
+
+	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
+		super().__init__(screen, scene_manager)
+		self.player_stats = player_stats
+		LEAVE_X = 750
+		LEAVE_Y = 575
+		UP_X = 53
+		UP2_X = 184
+		UP_Y = 40
+		BUTTON_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 4 if FULL_SCREEN else 4
+
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "leave.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "leave_over.png"), True)
+		up1_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "up1.png"), True)
+		up1_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "up1_over.png"), True)
+		up2_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "up2.png"), True)
+		up2_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "up2_over.png"), True)
+		dealer_surf = game.load_picture(os.path.join(IMAGE_PATH, "dealer.png"), True)
+		border1_surf = game.load_picture(os.path.join(IMAGE_PATH, "border1.png"), True)
+		border1_surf = pygame.transform.scale(border1_surf, ((border1_surf.get_width()*6, border1_surf.get_height()*9.85)))
+		energy_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy.png"), True)
+		energy_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_over.png"), True)
+		stash_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash.png"), True)
+		stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_over.png"), True)
+		
+		leave_button = ui.ScalableButton(screen, (round(LEAVE_X), round(LEAVE_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE, "bottomright")
+		up1_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
+		up2_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
+		stash_button = ui.ScalableButton(screen, (round(UP_X), round(171)), stash_surf, stash_over_surf, 6, "topleft")
+		energy_button = ui.ScalableButton(screen, (round(43), round(302)), energy_surf, energy_over_surf, 6, "topleft")
+		
+		#up3_button = ui.Button(screen, (round(UP3_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
+		#up4_button = ui.Button(screen, (round(UP4_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topright")
+		
+		dealer = ui.ScalableButton(screen, (775, 25), dealer_surf, dealer_surf, 8.5, "topright")
+		border1 = ui.ScalableButton(screen, (25,25), border1_surf, border1_surf, 1, "topleft")
+		border2 = ui.ScalableButton(screen, (525,25), border1_surf, border1_surf, 1, "topleft", flip_x= True)
+		
+		up1_info_text = "Copper Shovel\n--------------------\n+1 Break Damage"
+		up2_info_text = "Netherite Shovel\n--------------------\n+2 Break Damage"
+		stash_info_text = "BF Bag\n--------------------\n+50 Bag Slot"
+		energy_info_text = "Monsta Energy\n--------------------\n+50 Max Energy"
+		
+		self.up1_info = pygwidgets.DisplayText(screen, (598,250), up1_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+		self.up2_info = pygwidgets.DisplayText(screen, (598,250), up2_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+		self.stash_info = pygwidgets.DisplayText(screen, (598,250), stash_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+		self.energy_info = pygwidgets.DisplayText(screen, (598,250), energy_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+		
+		self.shop_group = ui.UIGroup([leave_button, up1_button, up2_button, dealer, border1, border2, stash_button, energy_button])
+
+	def run_loop(self):
+		super().run_loop()
+		events = pygame.event.get()
+		
+		mouse_pos = pygame.mouse.get_pos()
+		clicked = self.shop_group.update(mouse_pos, events)
+		
+		self.screen.fill("#000000")
+		for event in events:
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					self.scene_manager.stop()
+			if event.type == pygame.QUIT:
+				self.scene_manager.stop()
+		
+		if clicked[0]:
+			self.scene_manager.change_scene(MAIN_SCENE_KEY, reset_stack=True)
+		
+		if self.shop_group.ui_list[1].activated:
+			self.up1_info.draw()
+			if clicked[1]:
+				self.player_stats.break_damage += 1
+				print("Bought Copper Shovel")
+		
+		if self.shop_group.ui_list[2].activated:
+			self.up2_info.draw()
+			if clicked[2]:
+				self.player_stats.break_damage += 2
+		
+		if self.shop_group.ui_list[6].activated:
+			self.stash_info.draw()
+			if clicked[6]:
+				self.player_stats.max_block += 50
+				print(f"{self.player_stats.block}/{self.player_stats.max_block}")
+		
+		if self.shop_group.ui_list[7].activated:
+			self.energy_info.draw()
+			if clicked[7]:
+				self.player_stats.max_energy += 50
+		
+		self.shop_group.draw()
+
+		pygame.display.flip()
+
+		self.dt = self.clock.tick(FPS) / 1000
+		self.dt = min(self.dt, 1 / FPS)
+
 
 if __name__ == "__main__":
 	main()

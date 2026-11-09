@@ -19,13 +19,10 @@ ORIGINAL_SCREEN_WIDTH = 800
 ORIGINAL_SCREEN_HEIGHT = 600
 SCREEN_WIDTH = screeninfo.current_w if FULLSCREEN else ORIGINAL_SCREEN_WIDTH
 SCREEN_HEIGHT = screeninfo.current_h if FULLSCREEN else ORIGINAL_SCREEN_HEIGHT
-LEAVE_X = 750
-LEAVE_Y = 575
-UP_X = 53
-UP2_X = 184
+
 #UP3_X = 313
 #UP4_X = 540
-UP_Y = 40
+
 
 
 
@@ -83,7 +80,7 @@ def main_menu():
 
         mouse_pos = pygame.mouse.get_pos()
 
-        shop_group.update(mouse_pos, events)
+        clicked = shop_group.update(mouse_pos, events)
         
         screen.fill("#000000")
         for event in events:
@@ -93,8 +90,8 @@ def main_menu():
             if event.type == pygame.QUIT:
                 running = False
         
-        if leave_button.clicked:
-            running = False
+        if clicked[0]:
+            self.scene_manager.stop
 
         if up1_button.activated:
             up1_info.draw()

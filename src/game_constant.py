@@ -20,6 +20,7 @@ BASE_PATH = os.path.dirname(CURRENT_PATH)
 ASSET_PATH = os.path.join(BASE_PATH, "assets")
 IMAGE_PATH = os.path.join(ASSET_PATH, "images")
 MUSIC_PATH = os.path.join(ASSET_PATH, "musics")
+FONT_PATH = os.path.join(ASSET_PATH, "fonts")
 
 FPS = 120
 FPS_UI = 20
@@ -61,6 +62,9 @@ GRAVITY_ACCELERATION = 640
 BLOCK_PER_WIDTH = 15
 BLOCK_PER_HEIGHT = 50
 MINE_POS = (-100, 100)
+END_MINE_POS = (MINE_POS[0] + BLOCK_WIDTH * BLOCK_PER_WIDTH, MINE_POS[1] + BLOCK_HEIGHT * BLOCK_PER_HEIGHT)
+CAM_CUTOFF_RIGHT = END_MINE_POS[0] + 5 * BLOCK_WIDTH
+CAM_CUTOFF_LEFT = MINE_POS[0] - 15 * BLOCK_WIDTH
 
 WORLD_START_SEED = 1
 SAVE_VERSION = 1.1
@@ -68,6 +72,11 @@ SAVE_FILE_EXTENSION = ".gamesave"
 AUTO_SAVE_FILE_NAME = "autosave"+SAVE_FILE_EXTENSION
 
 RHYTHM_BAR_WIDTH = SCREEN_WIDTH * 3 // 4
+
+MAIN_SCENE_KEY = "main_scene"
+MAIN_MENU_SCENE_KEY = "main_menu_scene"
+PAUSE_SCENE_KEY = "pause_scene"
+SHOP_SCENE_KEY = "shop_scene"
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
