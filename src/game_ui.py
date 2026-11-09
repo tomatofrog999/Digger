@@ -3,46 +3,47 @@ import pygwidgets
 import game_essential as game
 
 class UIGroup:
-	def __init__(self, ui_list: list[ScalableButton]):
-		self.ui_list = ui_list
+	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
+		self.ui_dict = ui_dict
 
-	def add(self, ui: ScalableButton):
-		self.ui_list.append(ui)
+	def add(self, key: str, ui: ScalableButton | ScalableDisplay):
+		self.ui_dict[key] = ui
 
-	def add_list(self, ui_list: list[ScalableButton]):
-		self.ui_list += ui_list
-
-	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> list[bool]:
-		clicked: list[bool] = []
-		for ui in self.ui_list:
-			clicked.append(ui.update(mouse_pos, events))
+	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
+		self.ui_dict.update(ui_dict)
+	
+	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> dict[str, bool]:
+		clicked: dict[str, bool] = {}
+		for key, ui in self.ui_dict.items():
+			if not isinstance(ui, ScalableButton):
+				continue
+			clicked[key] = ui.update(mouse_pos, events)
 		
 		return clicked
 
 	def draw(self):
-		for ui in self.ui_list:
+		for ui in self.ui_dict.values():
 			ui.draw()
 
 class PygwidgetsUIGroup:
-	def __init__(self, ui_list: list[pygwidgets.TextButton]):
-		self.ui_list = ui_list
+	def __init__(self, ui_dict: dict[str, pygwidgets.TextButton]):
+		self.ui_dict = ui_dict
 
-	def add(self, ui: pygwidgets.TextButton):
-		self.ui_list.append(ui)
+	def add(self, key: str, ui: pygwidgets.TextButton):
+		self.ui_dict[key] = ui
 
-	def add_list(self, ui_list: list[pygwidgets.TextButton]):
-		self.ui_list += ui_list
+	def add_dict(self, ui_dict: dict[str, pygwidgets.TextButton]):
+		self.ui_dict.update(ui_dict)
 
-	def update(self, events: list[pygame.Event]) -> list[bool]:
-		clicked = [False for _ in range(len(self.ui_list))]
-		for i in range(len(self.ui_list)):
-			ui = self.ui_list[i]
+	def update(self, events: list[pygame.Event]) -> dict[str, bool]:
+		clicked = {key: False for key in self.ui_dict.keys()}
+		for key, ui in self.ui_dict.items():
 			for event in events:		
-				clicked[i] = True if ui.handleEvent(event) else clicked[i]
+				clicked[key] = True if ui.handleEvent(event) else clicked[key]
 		return clicked
 
 	def draw(self):
-		for ui in self.ui_list:
+		for ui in self.ui_dict.values():
 			ui.draw()
 
 class ScalableButton:
@@ -54,8 +55,6 @@ class ScalableButton:
 		self.over = btn_pressed_surf
 		self.pos = pos
 		
-		width = self.up.get_width()
-		height = self.up.get_height()
 		self.up = game.scale_surface(self.up, scale)
 		self.over = game.scale_surface(self.over, scale)
 		self.rect =  self.up.get_rect()
@@ -86,6 +85,19 @@ class ScalableButton:
 			self.screen.blit(self.over, (self.rect.x, self.rect.y))
 		else:
 			self.screen.blit(self.up, (self.rect.x, self.rect.y))
+
+class ScalableDisplay:
+	def __init__(self, screen: pygame.Surface, pos: tuple[int, int], surf: pygame.Surface, scale: float = 1.0, anchor: str = "center", flip_x: bool = False, flip_y: bool = False):
+		self.screen = screen
+		self.surf = pygame.transform.flip(surf, flip_x, flip_y)
+		self.surf = game.scale_surface(self.surf, scale)
+		self.pos = pos
+
+		self.rect =  self.surf.get_rect()
+		setattr(self.rect, anchor, pos)
+        
+	def draw(self):
+		self.screen.blit(self.surf, (self.rect.x, self.rect.y))
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
