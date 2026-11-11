@@ -99,5 +99,69 @@ class ScalableDisplay:
 	def draw(self):
 		self.screen.blit(self.surf, (self.rect.x, self.rect.y))
 
+class FadeDisplay:
+	def __init__(self, screen: pygame.Surface, pos: tuple[int, int], surf: pygame.Surface,  time_display: int, fade_start:int, fade_step: int, scale: float | int | tuple[float | int, float | int], anchor: str = "center"):
+		self.screen = screen
+		self.surf = game.scale_surface(surf, scale)
+		self.pos = pos
+		self.fade_start = fade_start
+		self.fade_step = fade_step
+		self.current_alpha = self.fade_start
+		self.activated = False
+		self.last_update = 0
+		
+		self.time_display = time_display
+		
+		self.rect = self.surf.get_rect()
+		setattr(self.rect, anchor, pos)
+
+	def trigger(self):
+		self.current_alpha = self.fade_start
+		self.last_update = pygame.time.get_ticks()
+		self.activated = True
+
+	def draw(self):
+		if not self.activated:
+			return
+		
+		current_time = pygame.time.get_ticks() - self.last_update
+		
+		if current_time >= self.time_display:
+			self.current_alpha += self.fade_step
+			self.surf.set_alpha(self.current_alpha)
+			self.screen.blit(self.surf, (self.rect.x, self.rect.y))
+			
+			if self.current_alpha < 10:
+				self.activated = False					
+		else:
+			self.surf.set_alpha(self.fade_start)
+			self.screen.blit(self.surf, (self.rect.x, self.rect.y))
+
+class Bar:
+	def __init__(self, screen: pygame.Surface, base: pygame.Surface, over:pygame.Surface, pos: tuple[int,int], scale: float):
+		self.screen = screen
+		self.pos = pos
+		
+		self.base = game.scale_surface(base, scale)
+		self.over = game.scale_surface(over, scale)
+		self.over_w, self.over_h = self.over.get_rect().size
+
+	def draw(self, player_stats: game.PlayerStats, ratio: float | int):
+		if player_stats.game_over:
+			self.over = pygame.transform.scale(self.over, (self.over_w, self.over_h))
+		
+		self.screen.blit(self.base, self.pos)
+		
+		self.over = pygame.transform.scale(self.over, (self.over_w * ratio, self.over_h))
+		self.screen.blit(self.over, self.pos)
+		
+	
+
+
+
+
+
+
+
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")

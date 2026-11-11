@@ -22,11 +22,13 @@ def main():
 	pause_scene = PauseScene(screen, scene_manager)
 	shop_scene = ShopScene(screen, scene_manager, player_stats)
 	bar_scene = BarScene(screen, scene_manager, player_stats)
+	game_over_scene = GameOverScene(screen, scene_manager, player_stats)
 	scene_manager.scenes[MAIN_MENU_SCENE_KEY] = main_menu_scene
 	scene_manager.scenes[MAIN_SCENE_KEY] = main_scene
 	scene_manager.scenes[PAUSE_SCENE_KEY] = pause_scene
 	scene_manager.scenes[SHOP_SCENE_KEY] = shop_scene
 	scene_manager.scenes[BAR_SCENE_KEY] = bar_scene
+	scene_manager.scenes[GAME_OVER_KEY] = game_over_scene
 	scene_manager.start()
 
 	while scene_manager.running:
@@ -180,7 +182,7 @@ class MainMenuScene(Scene):
 					return
 
 		self.screen.fill("#171722")
-
+	
 		mouse_pos = pygame.mouse.get_pos()
 		clicked = self.main_menu_group.update(mouse_pos, events)
 
@@ -396,6 +398,21 @@ class MainScene(Scene):
 		self.shop = game.PlatformSprite(SHOP_SURFACE, (0, 0))
 		self.shop.get_rect().bottomleft =(MINE_POS[0] + BLOCK_WIDTH * (BLOCK_PER_WIDTH + 2), MINE_POS[1])
 
+		base_surf = pygame.Surface((300,30))
+		base_surf.fill("#313030")
+		hp_over_surf = pygame.Surface((300,30))
+		hp_over_surf.fill("#FF0000")
+		energy_over_surf = pygame.Surface((300,30))
+		energy_over_surf.fill("#FFFB00")
+		#base2_surf = pygame.Surface((30,300))
+		#base2_surf.fill("#313030")
+		stash_over_surf = pygame.Surface((30,300))
+		stash_over_surf.fill("#F403FC")
+		
+		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, (10,SCREEN_HEIGHT-250), 1)
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, (10,SCREEN_HEIGHT-210), 1)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, (10,SCREEN_HEIGHT-170), 1)
+						
 	def start(self):
 		super().start()
 
@@ -438,9 +455,10 @@ class MainScene(Scene):
 		except ValueError as e:
 			print(str(e))
 
+		
 		if self.player_stats.game_over:
 			print("Game Over")
-			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
+			self.scene_manager.change_scene(GAME_OVER_KEY, reset_stack=True)
 			return
 		
 		# Update camera movement
@@ -515,6 +533,15 @@ class MainScene(Scene):
 		self.display_text2.draw()
 
 		self.ui_group1.draw()
+
+		hp_ratio = game.clamp(self.player_stats.health / self.player_stats.max_health, 0, 1)
+		self.hp_bar.draw(self.player_stats, hp_ratio)
+		energy_ratio = game.clamp(self.player_stats.energy / self.player_stats.max_energy, 0, 1)
+		self.energy_bar.draw(self.player_stats, energy_ratio)
+		stash_ratio = game.clamp(self.player_stats.block / self.player_stats.max_block, 0, 1)
+		self.stash_bar.draw(self.player_stats, stash_ratio)
+		print(stash_ratio)
+		
 
 		pygame.display.flip()
 
@@ -696,6 +723,76 @@ class BarScene(Scene):
 
 		
 		self.bar_group.draw()
+
+		pygame.display.flip()
+
+		self.dt = self.clock.tick(FPS_UI) / 1000
+		self.dt = min(self.dt, 1 / FPS_UI)
+
+class GameOverScene(Scene):
+	PLAY_BUTTON = "play"
+	EXIT_BUTTON = "exit"
+	LOGO_DISPLAY = "logo"
+	EXIT_DESKTOP = "exit_desktop"
+	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
+		super().__init__(screen, scene_manager)
+
+		PLAY_BTN_Y = round(SCREEN_HEIGHT / 1.55)
+		EXIT_BTN_Y = round(SCREEN_HEIGHT / 1.325)
+		LOGO_Y = round(SCREEN_HEIGHT / 2.85)
+		BUTTON_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 4 if FULL_SCREEN else 3
+		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.55 if FULL_SCREEN else 0.5
+
+		# Main Menu
+		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "play.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'play_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
+		
+		# Main Menu Button
+		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
+		exit_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, EXIT_BTN_Y), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+		logo = ui.ScalableDisplay(screen, (SCREEN_WIDTH_HALF, LOGO_Y), logo_surf, LOGO_SCALE)
+		exit_desktop_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, round(SCREEN_HEIGHT / 1.2)), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+			
+		self.main_menu_group = ui.UIGroup({ 
+			GameOverScene.PLAY_BUTTON: play_button, 
+			GameOverScene.EXIT_BUTTON: exit_button,
+			GameOverScene.LOGO_DISPLAY: logo,
+			GameOverScene.EXIT_DESKTOP: exit_desktop_button
+		})
+
+	def run_loop(self):
+		super().run_loop()
+		events = pygame.event.get()
+		for event in events:
+			if event.type == pygame.QUIT:
+				self.scene_manager.stop()
+				return
+			elif event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					self.scene_manager.go_back()
+					return
+
+		self.screen.fill("#DA3131")
+
+		mouse_pos = pygame.mouse.get_pos()
+		clicked = self.main_menu_group.update(mouse_pos, events)
+
+		if clicked[GameOverScene.PLAY_BUTTON]:
+			self.scene_manager.change_scene(MAIN_SCENE_KEY, reset_stack=True)
+			return
+
+		if clicked[GameOverScene.EXIT_BUTTON]:
+			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
+			return
+
+		if clicked[GameOverScene.EXIT_DESKTOP]:
+			self.scene_manager.stop()
+			return
+
+		self.main_menu_group.draw()
 
 		pygame.display.flip()
 
