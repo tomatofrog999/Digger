@@ -5,6 +5,8 @@ import itertools
 import math
 import json
 from game_constant import *
+import copy
+from collections.abc import Callable
 
 class Block(pygame.sprite.Sprite):
 	HEALTH_TO_BLOCK_RATE = 1 / 3 
@@ -93,13 +95,14 @@ class TreasureBlock(Block):
 		return self.rect
 
 class PlatformSprite(pygame.sprite.Sprite):
-	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int]):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], invisible: bool = False):
 		super().__init__()
 
 		self.image = surface
 		
 		self.rect = self.image.get_rect()
 		self.rect.topleft = topleft
+		self.invisible = invisible
 
 	def get_rect(self) -> pygame.Rect:
 		if not isinstance(self.rect, pygame.Rect):
@@ -115,12 +118,14 @@ class PlayerStats:
 		self.block = 0
 		self.max_block = -1
 		self.money = 0
-		self.rate_of_convertion = -1.0
+		self.convertion_ratio = -1
 
 		self.break_damage = -1.0
 		self.break_damage_modifier = -1.0
 		self.on_beat_extra_damage = -1.0
 		self.on_beat_extra_damage_modifier = -1.0
+
+		self.scene_finished_amount = 0
 
 		self.game_over = False
 
@@ -134,16 +139,17 @@ class PlayerStats:
             "block": self.block,
             "max_block": self.max_block,
             "money": self.money,
-            "rate_of_convertion": self.rate_of_convertion,
+            "convertion_ratio": self.convertion_ratio,
             "break_damage": self.break_damage,
             "break_damage_modifier": self.break_damage_modifier,
             "on_beat_extra_damage": self.on_beat_extra_damage,
-            "on_beat_extra_damage_modifier": self.on_beat_extra_damage_modifier
+            "on_beat_extra_damage_modifier": self.on_beat_extra_damage_modifier,
+            "scene_finished_amount": self.scene_finished_amount
 		}
 
 	def load_dict(self, new_player_stats: dict[str, int | float | list]):
 		if any([stats not in new_player_stats for stats in ("max_health", "health", "max_energy", "energy",\
-					"block", "max_block", "money", "rate_of_convertion", "break_damage", "break_damage_modifier", \
+					"block", "max_block", "money", "convertion_ratio", "break_damage", "break_damage_modifier", \
 					"on_beat_extra_damage", "on_beat_extra_damage_modifier")]) \
 				or not isinstance(new_player_stats["max_health"], int) \
 				or not isinstance(new_player_stats["health"], int) \
@@ -152,11 +158,12 @@ class PlayerStats:
 				or not isinstance(new_player_stats["block"], int) \
 				or not isinstance(new_player_stats["max_block"], int) \
 				or not isinstance(new_player_stats["money"], int) \
-				or not isinstance(new_player_stats["rate_of_convertion"], float) \
+				or not isinstance(new_player_stats["convertion_ratio"], int) \
 				or not isinstance(new_player_stats["break_damage"], float) \
 				or not isinstance(new_player_stats["break_damage_modifier"], float) \
 				or not isinstance(new_player_stats["on_beat_extra_damage"], float) \
-				or not isinstance(new_player_stats["on_beat_extra_damage_modifier"], float):
+				or not isinstance(new_player_stats["on_beat_extra_damage_modifier"], float) \
+				or not isinstance(new_player_stats["scene_finished_amount"], int):
 			raise ValueError("Unable to load from dict.")
 		self.max_health = new_player_stats["max_health"]
 		self.health = new_player_stats["health"]
@@ -165,11 +172,14 @@ class PlayerStats:
 		self.block = new_player_stats["block"]
 		self.max_block = new_player_stats["max_block"]
 		self.money = new_player_stats["money"]
-		self.rate_of_convertion = new_player_stats["rate_of_convertion"]
+		self.convertion_ratio = new_player_stats["convertion_ratio"]
 		self.break_damage = new_player_stats["break_damage"]
 		self.break_damage_modifier = new_player_stats["break_damage_modifier"]
 		self.on_beat_extra_damage = new_player_stats["on_beat_extra_damage"]
 		self.on_beat_extra_damage_modifier = new_player_stats["on_beat_extra_damage_modifier"]
+		self.scene_finished_amount = new_player_stats["scene_finished_amount"]
+		if self.health <= 0:
+			self.game_over = True
 
 	def reset(self):
 		self.max_health = START_HEALTH
@@ -179,13 +189,13 @@ class PlayerStats:
 		self.block = 0
 		self.max_block = START_MAX_INVENTORY
 		self.money = 0
-		self.rate_of_convertion = START_RATE_OF_CONVERTION
+		self.convertion_ratio = START_CONVERTION_RATIO
 		self.break_damage = START_BREAK_DAMAGE
 		self.break_damage_modifier = START_BREAK_DAMAGE_MODIFIER
 		self.on_beat_extra_damage = START_ON_BEAT_EXTRA_DMG
 		self.on_beat_extra_damage_modifier = START_ON_BEAT_EXTRA_DMG_MODIFIER
+		self.scene_finished_amount = 0
 		self.game_over = False
-		self.check_init()
 
 	def check_init(self):
 		required_attrs = [
@@ -195,7 +205,7 @@ class PlayerStats:
 			'energy',
 			'max_block',
 			'money',
-			'rate_of_convertion',
+			'convertion_ratio',
 			'break_damage',
 			'break_damage_modifier',
 			'on_beat_extra_damage',
@@ -217,8 +227,8 @@ class PlayerStats:
 		self.max_block = max_block
 		return self
 
-	def init_rate_of_convertion(self, rate_of_convertion: float):
-		self.rate_of_convertion = rate_of_convertion
+	def init_convertion_ratio(self, convertion_ratio: int):
+		self.convertion_ratio = convertion_ratio
 		return self
 
 	def init_break_damage(self, break_damage: float, break_damage_modifier: float):
@@ -233,6 +243,9 @@ class PlayerStats:
 
 	def refill_energy(self):
 		self.energy = self.max_energy
+
+	def refill_health(self):
+		self.health = self.max_health
 
 	def add_block(self, amount: int):
 		if amount < 0:
@@ -297,8 +310,28 @@ class PlayerStats:
 		self.game_over = True
 
 	def convert_block_to_money(self):
-		self.money += round(self.block * self.rate_of_convertion)
-		self.block = 0
+		money_gain = self.block // self.convertion_ratio
+		block_remaining = self.block % self.convertion_ratio
+		self.money += money_gain
+		self.block = block_remaining
+
+	def handle_bulk_buy(self, keys: pygame.key.ScancodeWrapper, cost: int, func: Callable, *args: int):
+		run_count = 1
+		if keys[pygame.K_LCTRL] and keys[pygame.K_LSHIFT]:
+			run_count = -1
+		elif keys[pygame.K_LCTRL]:
+			run_count = 10
+		elif keys[pygame.K_LSHIFT]:
+			run_count = 100
+
+		if not run_count == -1:
+			if self.buy(cost * run_count):
+				for _ in range(run_count):
+					func(*args)
+		else:
+			while self.buy(cost):
+				func(*args)
+		
 
 class PlayerSprite(pygame.sprite.Sprite):
 	class AnimationData:
@@ -347,7 +380,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 	WALL_SLIDE_SPEED_THRESHOLD = 100.0
 	TICK_TILL_ENABLE_SLIDE = round(0.1 * FPS)
 
-	BREAK_BLOCK_DISTANCE = 3 # block
+	BREAK_BLOCK_DISTANCE = 1 # block
 	ADDITION_SPEED_WHEN_BREAK_BLOCK = 200.0
 	def __init__(self, topleft: tuple[float, float], hitblock_size: tuple[int, int], player_stats: PlayerStats, game_state: GameState):
 		super().__init__()
@@ -547,10 +580,12 @@ class PlayerSprite(pygame.sprite.Sprite):
 				if srect.colliderect(block.get_rect()):
 					if self.velocity_x > 0:
 						srect.right = block.get_rect().left
-						self.touch_wall_side = PlayerSprite.TouchWallState.TOUCH_WALL_RIGHT
+						if not isinstance(block, PlatformSprite) or (isinstance(block, PlatformSprite) and not block.invisible):
+							self.touch_wall_side = PlayerSprite.TouchWallState.TOUCH_WALL_RIGHT
 					else:
 						srect.left = block.get_rect().right
-						self.touch_wall_side = PlayerSprite.TouchWallState.TOUCH_WALL_LEFT
+						if not isinstance(block, PlatformSprite) or (isinstance(block, PlatformSprite) and not block.invisible):
+							self.touch_wall_side = PlayerSprite.TouchWallState.TOUCH_WALL_LEFT
 					self.velocity_x = 0
 					break
 		if self.touch_wall_side == PlayerSprite.TouchWallState.NOT_TOUCH_WALL:
@@ -642,7 +677,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 					is_collide = block.get_rect().collidepoint((srect.centerx + digging_offset_x, srect.centery + digging_offset_y))
 					if is_collide:
 						# not remove energy when hit on beat
-						if not self.on_beat_hit and not self.player_stats.remove_energy(block.energy_usage):
+						if not self.player_stats.remove_energy(block.energy_usage):
 							raise ValueError("Energy not enough")
 						self.change_action(PlayerSprite.AnimationState.DIG)
 						if self.on_beat_hit:
@@ -835,24 +870,21 @@ class Camera:
 	def get_cam_offset(self) -> tuple[float, float]:
 		# When camera move, the object will move opposite camera. So, we negate the camera for x and y
 		# Then we add half of screen to make camera focus on center of screen not on topleft of screen
-		cam_offset_x = -self.x + SCREEN_WIDTH_HALF
-		cam_offset_y = -self.y + SCREEN_HEIGHT_HALF
+		cam_offset_x = -self.x
+		cam_offset_y = -self.y
 		return (cam_offset_x, cam_offset_y)
 
 	def update(self, player_rect: pygame.FRect, dt: float):
-		cam_displacement_x = player_rect.x - self.x
+		cam_displacement_x = clamp(player_rect.centerx, CAM_CUTOFF_LEFT + SCREEN_WIDTH_HALF, CAM_CUTOFF_RIGHT - SCREEN_WIDTH_HALF) - (self.x + SCREEN_WIDTH_HALF)
 		addition_height = CAM_Y_UNDERGROUND_OFFSET if player_rect.bottom > MINE_POS[1] else -CAM_Y_UNDERGROUND_OFFSET
-		cam_displacement_y = (player_rect.y + addition_height) - self.y
-
-		cam_displacement_left = CAM_CUTOFF_LEFT - (player_rect.x - SCREEN_WIDTH_HALF)
-		cam_displacement_right = CAM_CUTOFF_RIGHT - (player_rect.x + SCREEN_WIDTH_HALF)
+		cam_displacement_y = (player_rect.centery + addition_height) - (self.y + SCREEN_HEIGHT_HALF)
 
 		cam_distance_x = abs(cam_displacement_x)
 		cam_distance_y = abs(cam_displacement_y)
 		if cam_displacement_x > CAM_MIN_DISTANCE:
-			self.x += min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt) if cam_displacement_right > 0 else 0
+			self.x += min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt)
 		elif cam_displacement_x < -CAM_MIN_DISTANCE:
-			self.x -= min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt) if cam_displacement_left < 0 else 0
+			self.x -= min(cam_distance_x, CAM_SPEED_SCALE * cam_distance_x * dt)
 		
 		if cam_displacement_y > CAM_MIN_DISTANCE:
 			self.y += min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
@@ -1001,7 +1033,8 @@ class GameState:
 	MIN_SEED = -2**32
 	MAX_SEED = 2**32 - 1
 	def __init__(self, game_map: MapData, seed: int | None = None):
-		self.game_map = game_map
+		self.original_game_map = game_map
+		self.game_map = copy.deepcopy(self.original_game_map)
 		self.block_group: pygame.sprite.Group[Block] | None = None
 		self.platform_group: pygame.sprite.Group | None = None
 		self.block_broken: list[tuple[int, int]] = []
@@ -1009,6 +1042,16 @@ class GameState:
 			self.random_seed()
 		else:
 			self.seed = seed
+
+	def increase_map_difficulty(self, time: int = 1):
+		for _ in range(time):
+			for layer in self.game_map.layer_tuple:
+				layer.bomb_damage = round(layer.bomb_damage * SCENE_FINISHED_HARDNESS_MULTIPLIER)
+				layer.energy_usage = round(layer.energy_usage * SCENE_FINISHED_HARDNESS_MULTIPLIER)
+				layer.energy_addition = round(layer.energy_addition * SCENE_FINISHED_HARDNESS_MULTIPLIER)
+				layer.treasure_addition = round(layer.treasure_addition * SCENE_FINISHED_HARDNESS_MULTIPLIER)
+				for block in layer.block_tuple:
+					block.max_health = round(block.max_health * SCENE_FINISHED_HARDNESS_MULTIPLIER)
 
 	def init_block_group(self, block_group: pygame.sprite.Group):
 		self.block_group = block_group
@@ -1036,6 +1079,9 @@ class GameState:
 		self.block_broken = []
 		self.create_new_block_group()
 
+	def reset_map(self):
+		self.game_map = copy.deepcopy(self.original_game_map)
+
 	def get_block_group(self) -> pygame.sprite.Group[Block]:
 		if not isinstance(self.block_group, pygame.sprite.Group):
 			raise TypeError("'block_group' variable need to be pygame.sprite.Group type.")
@@ -1051,7 +1097,7 @@ class GameState:
 			"seed": self.seed
 		}
 
-	def load_dict(self, new_game_state: dict[str, list[list[int]] | int]):
+	def load_dict(self, new_game_state: dict[str, list[list[int]] | int], scene_finised_amount: int):
 		if "block_broken" not in new_game_state or "seed" not in new_game_state or not isinstance(new_game_state["block_broken"], list) or not isinstance(new_game_state["seed"], int):
 			raise ValueError("Unable to load from dict.")
 
@@ -1062,6 +1108,7 @@ class GameState:
 			self.block_broken = []
 		
 		self.seed = new_game_state["seed"]
+		self.increase_map_difficulty(scene_finised_amount)
 		self.create_new_block_group()
 
 def save_game(file_location: str, player_stats: PlayerStats, game_state: GameState, player_sprite: PlayerSprite):
@@ -1090,15 +1137,20 @@ def load_game(file_location: str, player_stats: PlayerStats, game_state: GameSta
 	if save_dict["save_version"] != SAVE_VERSION:
 		raise ValueError("Unable to load different version of save game")
 
-	player_sprite.reset()
+	reset(player_stats, game_state, player_sprite)
 	save_data = save_dict["save_data"]
 	player_stats.load_dict(save_data["player_stats"])
 	player_sprite.load_dict(save_data["player_sprite"])
-	game_state.load_dict(save_data["game_state"])
+	game_state.load_dict(save_data["game_state"], player_stats.scene_finished_amount)
+
+def delete_save(file_location: str):
+	if os.path.exists(file_location):
+		os.remove(file_location)
 
 def reset(player_stats: PlayerStats, game_state: GameState, player_sprite: PlayerSprite):
 	player_stats.reset()
 	game_state.reset_block_broken()
+	game_state.reset_map()
 	player_sprite.reset()
 
 def clamp(val: int | float, min_val: int | float, max_val: int | float) -> int | float:
@@ -1174,16 +1226,16 @@ def scale_surface(surface: pygame.Surface, scale: float | int | tuple[float | in
 	else:
 		return pygame.transform.scale(surface, (round(width * scale[0]), round(height * scale[1])))
 
-def tuple_add(t1: tuple, t2: tuple):
+def tuple_add(t1: tuple[int | float, ...], t2: tuple[int | float, ...]):
 	if len(t1) != len(t2):
 		raise ValueError("Length not equals.")
 
 	return tuple([t1[i] + t2[i] for i in range(len(t1))])
 
-def tuple_multiply(t1: tuple, constant: float | int):
+def tuple_multiply(t1: tuple[int | float, ...], constant: float | int):
 	return tuple([t1[i] * constant for i in range(len(t1))])
 
-def tuple_divide(t1: tuple, constant: float | int):
+def tuple_divide(t1: tuple[int | float, ...], constant: float | int):
 	return tuple([t1[i] * constant for i in range(len(t1))])
 
 if __name__ == "__main__":

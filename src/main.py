@@ -13,7 +13,7 @@ def main():
 
 	player_stats = game.PlayerStats().init_break_damage(START_BREAK_DAMAGE, START_BREAK_DAMAGE_MODIFIER).init_max_block(START_MAX_INVENTORY) \
 				.init_max_energy(START_ENERGY).init_max_health(START_HEALTH).init_on_beat_constant(START_ON_BEAT_EXTRA_DMG, START_ON_BEAT_EXTRA_DMG_MODIFIER) \
-				.init_rate_of_convertion(START_RATE_OF_CONVERTION)
+				.init_convertion_ratio(START_CONVERTION_RATIO)
 	player_stats.check_init()
 
 	scene_manager = SceneManager(MAIN_MENU_SCENE_KEY)
@@ -22,11 +22,13 @@ def main():
 	pause_scene = PauseScene(screen, scene_manager)
 	shop_scene = ShopScene(screen, scene_manager, player_stats)
 	bar_scene = BarScene(screen, scene_manager, player_stats)
+	game_over_scene = GameOverScene(screen, scene_manager, player_stats)
 	scene_manager.scenes[MAIN_MENU_SCENE_KEY] = main_menu_scene
 	scene_manager.scenes[MAIN_SCENE_KEY] = main_scene
 	scene_manager.scenes[PAUSE_SCENE_KEY] = pause_scene
 	scene_manager.scenes[SHOP_SCENE_KEY] = shop_scene
 	scene_manager.scenes[BAR_SCENE_KEY] = bar_scene
+	scene_manager.scenes[GAME_OVER_KEY] = game_over_scene
 	scene_manager.start()
 
 	while scene_manager.running:
@@ -192,7 +194,8 @@ class MainMenuScene(Scene):
 			return
 
 		if clicked[MainMenuScene.NEW_GAME_BUTTON]:
-			pass
+			game.delete_save(AUTO_SAVE_FILE_NAME)
+			self.scene_manager.change_scene(MAIN_SCENE_KEY, reset_stack=True)
 
 		self.main_menu_group.draw()
 
@@ -290,7 +293,7 @@ class MainScene(Scene):
 		BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 		
 		LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20) \
-					.init_treasure(0.01, 50).init_multiblock_rate(0.01).init_energy_usage(1)
+					.init_treasure(0.01, 10).init_multiblock_rate(0.01).init_energy_usage(1)
 		LAYER1_DATA.check_init()
 		
 		
@@ -303,8 +306,8 @@ class MainScene(Scene):
 		BLOCK4_SURFACE.fill("pink")
 		BLOCK4_DATA = game.BlockData(BLOCK4_SURFACE, 15.0, 0.4)
 		
-		LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.05, 2).init_energy(0.02, 30) \
-					.init_treasure(0.01, 80).init_multiblock_rate(0.02).init_energy_usage(1)
+		LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.06, 2).init_energy(0.03, 40) \
+					.init_treasure(0.015, 30).init_multiblock_rate(0.02).init_energy_usage(2)
 		LAYER2_DATA.check_init()
 		
 		# Layer 3
@@ -320,8 +323,8 @@ class MainScene(Scene):
 		BLOCK7_SURFACE.fill("plum2")
 		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.05)
 		
-		LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.1, 3).init_energy(0.02, 50) \
-					.init_treasure(0.015, 100).init_multiblock_rate(0.03).init_energy_usage(2)
+		LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.15, 3).init_energy(0.07, 80) \
+					.init_treasure(0.05, 80).init_multiblock_rate(0.03).init_energy_usage(4)
 		LAYER3_DATA.check_init()
 		
 		
@@ -338,10 +341,22 @@ class MainScene(Scene):
 		
 		PLATFORM2 = game.PlatformSprite(PLATFORM2_SURFACE, (MINE_POS[0] + BLOCK_WIDTH * BLOCK_PER_WIDTH, MINE_POS[1]))
 
+		PLATFORM3_SURFACE = pygame.Surface((BLOCK_WIDTH * 1, BLOCK_HEIGHT * 10))
+				
+		PLATFORM3 = game.PlatformSprite(PLATFORM3_SURFACE, (0, 0), invisible=True)
+		PLATFORM3.get_rect().bottomright = (CAM_CUTOFF_LEFT, MINE_POS[1])
+
+		PLATFORM4_SURFACE = PLATFORM3_SURFACE.copy()
+		
+		PLATFORM4 = game.PlatformSprite(PLATFORM4_SURFACE, (0, 0), invisible=True)
+		PLATFORM4.get_rect().bottomleft = (CAM_CUTOFF_RIGHT, MINE_POS[1])
+
 		self.game_state = game.GameState(MAP1_DATA, WORLD_START_SEED)
 		self.game_state.create_new_block_group()
 		self.platform_group.add(PLATFORM1)
 		self.platform_group.add(PLATFORM2)
+		self.platform_group.add(PLATFORM3)
+		self.platform_group.add(PLATFORM4)
 		self.game_state.init_platform_group(self.platform_group)
 
 		self.display_text1 = pygwidgets.DisplayText(self.screen, (0, 0), "Test", textColor="white", fontSize=32)
@@ -349,6 +364,9 @@ class MainScene(Scene):
 		
 		self.display_text2 = pygwidgets.DisplayText(self.screen, (0, 0), "Test", textColor="white", fontSize=32)
 		self.display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 20))
+
+		INV_FULL_POPUP_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "inventory_full.png"), True)
+		self.alert_popup = ui.FadeDisplay(self.screen, (0, 0), INV_FULL_POPUP_SURFACE, 2000, 255, -10, (2, 1.5))
 
 		# Create player and animation
 		ANIMATION_DICT = {
@@ -387,14 +405,29 @@ class MainScene(Scene):
 			"btn3":text_button3,
 			"btn4":text_button4,
 			"btn5":text_button5, 
-			"btn6":text_button6		  
+			"btn6":text_button6, 
 		})
 
 		SHOP_SURFACE = pygame.Surface((BLOCK_WIDTH * 5, BLOCK_HEIGHT * 5))
 		SHOP_SURFACE.fill("brown")
 
 		self.shop = game.PlatformSprite(SHOP_SURFACE, (0, 0))
-		self.shop.get_rect().bottomleft =(MINE_POS[0] + BLOCK_WIDTH * (BLOCK_PER_WIDTH + 2), MINE_POS[1])
+		self.shop.get_rect().bottomleft = (MINE_POS[0] + BLOCK_WIDTH * (BLOCK_PER_WIDTH + 2), MINE_POS[1])
+
+		base_surf = pygame.Surface((300,30))
+		base_surf.fill("#313030")
+		hp_over_surf = pygame.Surface((300,30))
+		hp_over_surf.fill("#FF0000")
+		energy_over_surf = pygame.Surface((300,30))
+		energy_over_surf.fill("#FFFB00")
+		#base2_surf = pygame.Surface((30,300))
+		#base2_surf.fill("#313030")
+		stash_over_surf = pygame.Surface((30,300))
+		stash_over_surf.fill("#F403FC")
+		
+		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, (10,SCREEN_HEIGHT-250), 1)
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, (10,SCREEN_HEIGHT-210), 1)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, (10,SCREEN_HEIGHT-170), 1)
 
 	def start(self):
 		super().start()
@@ -436,23 +469,29 @@ class MainScene(Scene):
 		try:
 			self.player.update(keys, events, self.dt, self.game_state)
 		except ValueError as e:
-			print(str(e))
+			self.alert_popup.trigger()
 
 		if self.player_stats.game_over:
-			print("Game Over")
-			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
+			self.scene_manager.change_scene(GAME_OVER_KEY, reset_stack=True)
 			return
 		
 		# Update camera movement
 		player_rect = self.player.get_rect()
+		if player_rect.y > TRANSITION_SCENE_POSITION_Y:
+			player_rect.y = NEW_SCENE_POSITION_Y
+			self.player.velocity_y = 0
+			self.camera.y = NEW_SCENE_POSITION_Y
+			self.player_stats.scene_finished_amount += 1
+			self.game_state.increase_map_difficulty()
+			self.game_state.random_seed()
+			self.game_state.reset_block_broken()
 		
 		self.camera.update(player_rect, self.dt)
-		
 
 		self.display_text1.setText(f"Health: {self.player_stats.health}/{self.player_stats.max_health} Block: {self.player_stats.block}/{self.player_stats.max_block} Energy: {self.player_stats.energy}/{self.player_stats.max_energy} Money: {self.player_stats.money}")
 		self.display_text1.setCenteredLoc((SCREEN_WIDTH_HALF, 20))
 
-		self.display_text2.setText(f"{self.game_state.seed}")
+		self.display_text2.setText(f"{self.player.get_rect().centerx:.2f}, {self.player.get_rect().centery:.2f}")
 		self.display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 100))
 
 		if ui_group1_clicked["btn1"]:
@@ -471,16 +510,11 @@ class MainScene(Scene):
 				print(str(e))
 
 		if ui_group1_clicked["btn5"]:
-			self.game_state.reset_block_broken()
-			self.player_stats.reset()
-			self.player.reset()
+			game.reset(self.player_stats, self.game_state, self.player)
 
 		if ui_group1_clicked["btn6"]:
 			self.game_state.random_seed()
-			self.game_state.create_new_block_group()
-
-			self.game_state.reset_block_broken()
-			self.player_stats.reset()
+			game.reset(self.player_stats, self.game_state, self.player)
 
 		if pressed_enter and self.shop.get_rect().colliderect(self.player.get_rect()):
 			self.scene_manager.change_scene(BAR_SCENE_KEY)
@@ -488,6 +522,9 @@ class MainScene(Scene):
 
 		# --- DRAWING ---
 		cam_offset = self.camera.get_cam_offset()
+
+		self.alert_popup.rect.centerx = self.player.get_rect().centerx + cam_offset[0]
+		self.alert_popup.rect.centery = self.player.get_rect().centery + cam_offset[1] - 50
 
 		for block in self.game_state.get_block_group():
 			if block.image == None:
@@ -514,7 +551,16 @@ class MainScene(Scene):
 		self.display_text1.draw()
 		self.display_text2.draw()
 
+		self.alert_popup.draw()
+
 		self.ui_group1.draw()
+
+		hp_ratio = game.clamp(self.player_stats.health / self.player_stats.max_health, 0, 1)
+		self.hp_bar.draw(self.player_stats, hp_ratio)
+		energy_ratio = game.clamp(self.player_stats.energy / self.player_stats.max_energy, 0, 1)
+		self.energy_bar.draw(self.player_stats, energy_ratio)
+		stash_ratio = game.clamp(self.player_stats.block / self.player_stats.max_block, 0, 1)
+		self.stash_bar.draw(self.player_stats, stash_ratio)
 
 		pygame.display.flip()
 
@@ -532,8 +578,17 @@ class MainScene(Scene):
 	def stop(self):
 		super().stop()
 		self.rhythm_handler.stop()
+		if not self.player_stats.game_over:
+			game.save_game(AUTO_SAVE_FILE_NAME, self.player_stats, self.game_state, self.player)
+		else:
+			game.delete_save(AUTO_SAVE_FILE_NAME)
+		game.reset(self.player_stats, self.game_state, self.player)
 
 class ShopScene(Scene):
+	UP1_INFO_TEXT = "Copper Shovel\n--------------------\n+1 Break Damage"
+	UP2_INFO_TEXT = "Netherite Shovel\n--------------------\n+2 Break Damage"
+	STASH_INFO_TEXT = "BF Bag\n--------------------\n+30 Bag Slot"
+	ENERGY_INFO_TEXT = "Monsta Energy\n--------------------\n+20 Max Energy"
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
@@ -572,15 +627,7 @@ class ShopScene(Scene):
 		border1 = ui.ScalableDisplay(screen, (25,25), border1_surf, 1, "topleft")
 		border2 = ui.ScalableDisplay(screen, (525,25), border1_surf, 1, "topleft", flip_x= True)
 		
-		up1_info_text = "Copper Shovel\n--------------------\n+1 Break Damage"
-		up2_info_text = "Netherite Shovel\n--------------------\n+2 Break Damage"
-		stash_info_text = "BF Bag\n--------------------\n+50 Bag Slot"
-		energy_info_text = "Monsta Energy\n--------------------\n+50 Max Energy"
-		
-		self.up1_info = pygwidgets.DisplayText(screen, (598,250), up1_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
-		self.up2_info = pygwidgets.DisplayText(screen, (598,250), up2_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
-		self.stash_info = pygwidgets.DisplayText(screen, (598,250), stash_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
-		self.energy_info = pygwidgets.DisplayText(screen, (598,250), energy_info_text, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+		self.item_info = pygwidgets.DisplayText(screen, (598,250), ShopScene.UP1_INFO_TEXT, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
 		
 		self.shop_group = ui.UIGroup({
 			"leave": leave_button,
@@ -602,6 +649,7 @@ class ShopScene(Scene):
 		events = pygame.event.get()
 		
 		mouse_pos = pygame.mouse.get_pos()
+		keys = pygame.key.get_pressed()
 		clicked = self.shop_group.update(mouse_pos, events)
 		clicked2 = self.shop_group2.update(events)
 		self.screen.fill("#000000")
@@ -613,27 +661,46 @@ class ShopScene(Scene):
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.go_back()
 					return
-		if clicked2["max_hp"] and self.player_stats.buy(5):
-			self.player_stats.add_max_health(1)
+		if clicked2["max_hp"]:
+			self.player_stats.handle_bulk_buy(keys, 30, lambda: setattr(self.player_stats, "max_health", self.player_stats.max_health + 1))
 		
 		if clicked["leave"]:
 			self.scene_manager.go_back()
 			return
+
+		draw_text_info = False
+		if isinstance(self.shop_group.ui_dict["up1"], ui.ScalableButton) and self.shop_group.ui_dict["up1"].activated:
+			self.item_info.setText(ShopScene.UP1_INFO_TEXT)
+			draw_text_info = True
+
+		if isinstance(self.shop_group.ui_dict["up2"], ui.ScalableButton) and self.shop_group.ui_dict["up2"].activated:
+			self.item_info.setText(ShopScene.UP2_INFO_TEXT)
+			draw_text_info = True
+
+		if isinstance(self.shop_group.ui_dict["stash_button"], ui.ScalableButton) and self.shop_group.ui_dict["stash_button"].activated:
+			self.item_info.setText(ShopScene.STASH_INFO_TEXT)
+			draw_text_info = True
+
+		if isinstance(self.shop_group.ui_dict["energy_button"], ui.ScalableButton) and self.shop_group.ui_dict["energy_button"].activated:
+			self.item_info.setText(ShopScene.ENERGY_INFO_TEXT)
+			draw_text_info = True
+
+		if clicked["up1"]:
+			self.player_stats.handle_bulk_buy(keys, 5, lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 1))
 		
-		if clicked["up1"] and self.player_stats.buy(5):
-			self.player_stats.break_damage += 1
-		
-		if clicked["up2"] and self.player_stats.buy(10):
-			self.player_stats.break_damage += 2
+		if clicked["up2"]:
+			self.player_stats.handle_bulk_buy(keys, 10, lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 3))
 	
-		if clicked["stash_button"] and self.player_stats.buy(10):
-			self.player_stats.max_block += 50
+		if clicked["stash_button"]:
+			self.player_stats.handle_bulk_buy(keys, 10, lambda: setattr(self.player_stats, "max_block", self.player_stats.max_block + 30))
 		
-		if clicked["energy_button"] and self.player_stats.buy(10):
-			self.player_stats.max_energy += 50
+		if clicked["energy_button"]:
+			self.player_stats.handle_bulk_buy(keys, 5, lambda: setattr(self.player_stats, "max_energy", self.player_stats.max_energy + 20))
 		
 		self.shop_group.draw()
 		self.shop_group2.draw()
+		if draw_text_info:
+			self.item_info.draw()
 
 		pygame.display.flip()
 
@@ -675,13 +742,14 @@ class BarScene(Scene):
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.go_back()
 					return
-			
+
+		keys = pygame.key.get_pressed()
 		
 		if clicked["convert"]:
 			self.player_stats.convert_block_to_money()
 
 		if clicked["add_energy"]:
-			if self.player_stats.buy(5):
+			if self.player_stats.buy(3):
 				self.player_stats.refill_energy()
 
 		if clicked["shop"]:
@@ -691,11 +759,81 @@ class BarScene(Scene):
 			self.scene_manager.go_back()
 
 		if clicked["add_health"]:
-			if self.player_stats.buy(5):
-				self.player_stats.add_health(1)
+			if self.player_stats.buy(20):
+				self.player_stats.refill_health()
 
 		
 		self.bar_group.draw()
+
+		pygame.display.flip()
+
+		self.dt = self.clock.tick(FPS_UI) / 1000
+		self.dt = min(self.dt, 1 / FPS_UI)
+
+class GameOverScene(Scene):
+	PLAY_BUTTON = "play"
+	EXIT_BUTTON = "exit"
+	LOGO_DISPLAY = "logo"
+	EXIT_DESKTOP = "exit_desktop"
+	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
+		super().__init__(screen, scene_manager)
+
+		PLAY_BTN_Y = round(SCREEN_HEIGHT / 1.55)
+		EXIT_BTN_Y = round(SCREEN_HEIGHT / 1.325)
+		LOGO_Y = round(SCREEN_HEIGHT / 2.85)
+		BUTTON_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 4 if FULL_SCREEN else 3
+		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.55 if FULL_SCREEN else 0.5
+
+		# Main Menu
+		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "play.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'play_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
+		
+		# Main Menu Button
+		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
+		exit_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, EXIT_BTN_Y), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+		logo = ui.ScalableDisplay(screen, (SCREEN_WIDTH_HALF, LOGO_Y), logo_surf, LOGO_SCALE)
+		exit_desktop_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, round(SCREEN_HEIGHT / 1.2)), exit_up_surf, exit_over_surf, BUTTON_SCALE)
+			
+		self.main_menu_group = ui.UIGroup({ 
+			GameOverScene.PLAY_BUTTON: play_button, 
+			GameOverScene.EXIT_BUTTON: exit_button,
+			GameOverScene.LOGO_DISPLAY: logo,
+			GameOverScene.EXIT_DESKTOP: exit_desktop_button
+		})
+
+	def run_loop(self):
+		super().run_loop()
+		events = pygame.event.get()
+		for event in events:
+			if event.type == pygame.QUIT:
+				self.scene_manager.stop()
+				return
+			elif event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					self.scene_manager.go_back()
+					return
+
+		self.screen.fill("#DA3131")
+
+		mouse_pos = pygame.mouse.get_pos()
+		clicked = self.main_menu_group.update(mouse_pos, events)
+
+		if clicked[GameOverScene.PLAY_BUTTON]:
+			self.scene_manager.change_scene(MAIN_SCENE_KEY, reset_stack=True)
+			return
+
+		if clicked[GameOverScene.EXIT_BUTTON]:
+			self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
+			return
+
+		if clicked[GameOverScene.EXIT_DESKTOP]:
+			self.scene_manager.stop()
+			return
+
+		self.main_menu_group.draw()
 
 		pygame.display.flip()
 
