@@ -422,12 +422,12 @@ class MainScene(Scene):
 		energy_over_surf.fill("#FFFB00")
 		#base2_surf = pygame.Surface((30,300))
 		#base2_surf.fill("#313030")
-		stash_over_surf = pygame.Surface((30,300))
+		stash_over_surf = pygame.Surface((300,30))
 		stash_over_surf.fill("#F403FC")
 		
-		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, (10,SCREEN_HEIGHT-250), 1)
-		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, (10,SCREEN_HEIGHT-210), 1)
-		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, (10,SCREEN_HEIGHT-170), 1)
+		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, "#FF0000", (10,SCREEN_HEIGHT-250), 1)
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, "#FFFB00", (10,SCREEN_HEIGHT-210), 1)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, "#F403FC", (10,SCREEN_HEIGHT-170), 1)
 
 	def start(self):
 		super().start()
