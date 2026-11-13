@@ -94,6 +94,21 @@ class TreasureBlock(Block):
 			raise TypeError("'rect' variable need to be pygame.Rect type.")
 		return self.rect
 
+
+class EndBlock(Block):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, money_addition: int, energy_usage: int):
+		super().__init__(surface, topleft, max_health, flip_x, flip_y, False, energy_usage)
+		self.money_addition = money_addition
+
+	def destroy(self, player_stats: PlayerStats):
+		super().kill()
+		player_stats.add_money(self.money_addition)
+
+	def get_rect(self) -> pygame.Rect:
+		if not isinstance(self.rect, pygame.Rect):
+			raise TypeError("'rect' variable need to be pygame.Rect type.")
+		return self.rect
+
 class PlatformSprite(pygame.sprite.Sprite):
 	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], invisible: bool = False):
 		super().__init__()
@@ -860,6 +875,11 @@ class MapData:
 				block_group.add(block)
 				block_x += self.block_width
 			block_y += self.block_height
+		block_x = 0
+		end_block = pygame.Surface((self.block_width * width, self.block_height * 4))
+		end_block.fill("green")
+		block = EndBlock(end_block, (block_x + map_position[0], block_y + map_position[1]), sorted(layer.block_tuple, key=lambda x: x.max_health)[0].max_health * width, False, False, layer.treasure_addition * width, layer.energy_usage)
+		block_group.add(block)
 		return block_group
 
 class Camera:
@@ -1044,14 +1064,13 @@ class GameState:
 			self.seed = seed
 
 	def increase_map_difficulty(self, time: int = 1):
-		for _ in range(time):
-			for layer in self.game_map.layer_tuple:
-				layer.bomb_damage = round(layer.bomb_damage * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				layer.energy_usage = round(layer.energy_usage * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				layer.energy_addition = round(layer.energy_addition * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				layer.treasure_addition = round(layer.treasure_addition * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				for block in layer.block_tuple:
-					block.max_health = round(block.max_health * SCENE_FINISHED_HARDNESS_MULTIPLIER)
+		for layer in self.game_map.layer_tuple:
+			layer.bomb_damage = round(layer.bomb_damage * (1 + time * SCENE_FINISHED_BOMB_DAMAGE_MULTIPLIER))
+			layer.energy_usage = round(layer.energy_usage * (1 + time * SCENE_FINISHED_ENERGY_USAGE_MULTIPLIER))
+			layer.energy_addition = round(layer.energy_addition * (1 + time * SCENE_FINISHED_ENERGY_ADDITION_MULTIPLIER))
+			layer.treasure_addition = round(layer.treasure_addition * (1 + time * SCENE_FINISHED_TREASURE_ADDITION_MULTIPLIER))
+			for block in layer.block_tuple:
+				block.max_health = round(block.max_health * (1 + time * SCENE_FINISHED_BLOCK_HEALTH_MULTIPLIER))
 
 	def init_block_group(self, block_group: pygame.sprite.Group):
 		self.block_group = block_group
