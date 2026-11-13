@@ -3,20 +3,18 @@ import pygwidgets
 import game_essential as game
 
 class UIGroup:
-	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay | FadeDisplay]):
+	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
 		self.ui_dict = ui_dict
 
-	def add(self, key: str, ui: ScalableButton | ScalableDisplay | FadeDisplay):
+	def add(self, key: str, ui: ScalableButton | ScalableDisplay):
 		self.ui_dict[key] = ui
 
-	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay | FadeDisplay]):
+	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
 		self.ui_dict.update(ui_dict)
 	
 	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> dict[str, bool]:
 		clicked: dict[str, bool] = {}
 		for key, ui in self.ui_dict.items():
-			if isinstance(ui, FadeDisplay):
-				ui.trigger()
 			if not isinstance(ui, ScalableButton):
 				continue
 			clicked[key] = ui.update(mouse_pos, events)
@@ -140,12 +138,13 @@ class FadeDisplay:
 			self.screen.blit(self.surf, (self.rect.x, self.rect.y))
 
 class Bar:
-	def __init__(self, screen: pygame.Surface, base: pygame.Surface, over: pygame.Surface, pos: tuple[int,int], scale: float):
+	def __init__(self, screen: pygame.Surface, base: pygame.Surface, over: pygame.Surface, color: str, pos: tuple[int,int], scale: float):
 		self.screen = screen
 		self.pos = pos
 		
 		self.base = game.scale_surface(base, scale)
 		self.over = game.scale_surface(over, scale)
+		self.color = color
 		self.over_w, self.over_h = self.over.get_rect().size
 
 	def draw(self, player_stats: game.PlayerStats, ratio: float | int):
@@ -153,8 +152,9 @@ class Bar:
 			self.over = pygame.transform.scale(self.over, (self.over_w, self.over_h))
 		
 		self.screen.blit(self.base, self.pos)
-		
+
 		self.over = pygame.transform.scale(self.over, (self.over_w * ratio, self.over_h))
+		self.over.fill(self.color)
 		self.screen.blit(self.over, self.pos)
 
 if __name__ == "__main__":
