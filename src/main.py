@@ -332,7 +332,7 @@ class MainScene(Scene):
 		
 		self.platform_group = pygame.sprite.Group()
 		
-		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
+		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
 		PLATFORM1_SURFACE.fill("brown")
 		PLATFORM2_SURFACE = PLATFORM1_SURFACE.copy()
 		
@@ -365,8 +365,9 @@ class MainScene(Scene):
 		self.display_text2 = pygwidgets.DisplayText(self.screen, (0, 0), "Test", textColor="white", fontSize=32)
 		self.display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 20))
 
-		INV_FULL_POPUP_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "inventory_full.png"), True)
-		self.alert_popup = ui.FadeDisplay(self.screen, (0, 0), INV_FULL_POPUP_SURFACE, 2000, 255, -10, (2, 1.5))
+		self.inv_full_popup_surface = game.scale_surface(game.load_picture(os.path.join(IMAGE_PATH, "inventory_full.png"), True), (2, 1.5))
+		self.exhausted_popup_surface = game.scale_surface(game.load_picture(os.path.join(IMAGE_PATH, "exhausted.png"), True), (2, 1.5))
+		self.alert_popup = ui.FadeDisplay(self.screen, (0, 0), self.inv_full_popup_surface, 2000, 255, -10, (1, 1))
 
 		# Create player and animation
 		ANIMATION_DICT = {
@@ -469,6 +470,10 @@ class MainScene(Scene):
 		try:
 			self.player.update(keys, events, self.dt, self.game_state)
 		except ValueError as e:
+			if str(e) == "Inventory full":
+				self.alert_popup.surf = self.inv_full_popup_surface
+			elif str(e) == "Energy not enough":
+				self.alert_popup.surf = self.exhausted_popup_surface
 			self.alert_popup.trigger()
 
 		if self.player_stats.game_over:
@@ -585,10 +590,19 @@ class MainScene(Scene):
 		game.reset(self.player_stats, self.game_state, self.player)
 
 class ShopScene(Scene):
-	UP1_INFO_TEXT = "Copper Shovel\n--------------------\n+1 Break Damage"
-	UP2_INFO_TEXT = "Netherite Shovel\n--------------------\n+2 Break Damage"
-	STASH_INFO_TEXT = "BF Bag\n--------------------\n+30 Bag Slot"
-	ENERGY_INFO_TEXT = "Monsta Energy\n--------------------\n+20 Max Energy"
+	SHOVEL_START_COST = 20
+	STASH_START_COST = 10
+	ENERGY_START_COST = 15
+	HEALTH_START_COST = 40
+	ITEM_COST_MULTIPLIER = 0.12
+	SHOVEL_INFO = ("Copper Shovel", "+1 Break Damage")
+	STASH_INFO = ("BF Bag", "+30 Bag Slot")
+	ENERGY_INFO = ("Monsta Energy", "+20 Max Energy")
+	HEALTH_INFO = ("Health Potion", "+1 Max Health")
+	def create_info_text(self, name: str, modifier: str, cost: int):
+		return f"{name}\n{"-"*20}\n{modifier}\ncost: {cost}"
+	def get_item_cost(self, start_cost: int, time: int) -> int:
+		return round(start_cost * (1 + time * ShopScene.ITEM_COST_MULTIPLIER))
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
@@ -614,11 +628,10 @@ class ShopScene(Scene):
 		stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_over.png"), True)
 		
 		leave_button = ui.ScalableButton(screen, (round(LEAVE_X), round(LEAVE_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE, "bottomright")
-		up1_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
-		up2_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
+		shovel_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
+		health_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
 		stash_button = ui.ScalableButton(screen, (round(UP_X), round(171)), stash_surf, stash_over_surf, 6, "topleft")
 		energy_button = ui.ScalableButton(screen, (round(43), round(302)), energy_surf, energy_over_surf, 6, "topleft")
-		max_hp_button = pygwidgets.TextButton(screen, ((round(174), round(302))), "+MAX HP", fontSize=10)
 		
 		#up3_button = ui.Button(screen, (round(UP3_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
 		#up4_button = ui.Button(screen, (round(UP4_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topright")
@@ -627,21 +640,18 @@ class ShopScene(Scene):
 		border1 = ui.ScalableDisplay(screen, (25,25), border1_surf, 1, "topleft")
 		border2 = ui.ScalableDisplay(screen, (525,25), border1_surf, 1, "topleft", flip_x= True)
 		
-		self.item_info = pygwidgets.DisplayText(screen, (598,250), ShopScene.UP1_INFO_TEXT, os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+		self.item_info = pygwidgets.DisplayText(screen, (598,250), self.create_info_text(*self.SHOVEL_INFO, self.SHOVEL_START_COST), os.path.join(FONT_PATH, "Silkscreen-Regular.ttf"), fontSize = 15, width = 177, height = 250 , textColor = "white", backgroundColor = "#252525")
+
 		
 		self.shop_group = ui.UIGroup({
 			"leave": leave_button,
-			"up1": up1_button, 
-			"up2": up2_button, 
+			"shovel": shovel_button, 
+			"health": health_button, 
 			"dealer": dealer, 
 			"border": border1, 
 			"border2": border2, 
 			"stash_button": stash_button, 
 			"energy_button": energy_button
-		})
-
-		self.shop_group2 = ui.PygwidgetsUIGroup({
-			"max_hp": max_hp_button
 		})
 
 	def run_loop(self):
@@ -651,7 +661,6 @@ class ShopScene(Scene):
 		mouse_pos = pygame.mouse.get_pos()
 		keys = pygame.key.get_pressed()
 		clicked = self.shop_group.update(mouse_pos, events)
-		clicked2 = self.shop_group2.update(events)
 		self.screen.fill("#000000")
 		for event in events:
 			if event.type == pygame.QUIT:
@@ -661,44 +670,41 @@ class ShopScene(Scene):
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.go_back()
 					return
-		if clicked2["max_hp"]:
-			self.player_stats.handle_bulk_buy(keys, 30, lambda: setattr(self.player_stats, "max_health", self.player_stats.max_health + 1))
-		
 		if clicked["leave"]:
 			self.scene_manager.go_back()
 			return
 
+		cost_multiplier = (1 + self.player_stats.scene_finished_amount * ShopScene.ITEM_COST_MULTIPLIER)
 		draw_text_info = False
-		if isinstance(self.shop_group.ui_dict["up1"], ui.ScalableButton) and self.shop_group.ui_dict["up1"].activated:
-			self.item_info.setText(ShopScene.UP1_INFO_TEXT)
+		if isinstance(self.shop_group.ui_dict["shovel"], ui.ScalableButton) and self.shop_group.ui_dict["shovel"].activated:
+			self.item_info.setText(self.create_info_text(*ShopScene.SHOVEL_INFO, round(ShopScene.SHOVEL_START_COST * cost_multiplier)))
 			draw_text_info = True
 
-		if isinstance(self.shop_group.ui_dict["up2"], ui.ScalableButton) and self.shop_group.ui_dict["up2"].activated:
-			self.item_info.setText(ShopScene.UP2_INFO_TEXT)
+		if isinstance(self.shop_group.ui_dict["health"], ui.ScalableButton) and self.shop_group.ui_dict["health"].activated:
+			self.item_info.setText(self.create_info_text(*ShopScene.HEALTH_INFO, round(ShopScene.HEALTH_START_COST * cost_multiplier)))
 			draw_text_info = True
 
 		if isinstance(self.shop_group.ui_dict["stash_button"], ui.ScalableButton) and self.shop_group.ui_dict["stash_button"].activated:
-			self.item_info.setText(ShopScene.STASH_INFO_TEXT)
+			self.item_info.setText(self.create_info_text(*ShopScene.STASH_INFO, round(ShopScene.STASH_START_COST * cost_multiplier)))
 			draw_text_info = True
 
 		if isinstance(self.shop_group.ui_dict["energy_button"], ui.ScalableButton) and self.shop_group.ui_dict["energy_button"].activated:
-			self.item_info.setText(ShopScene.ENERGY_INFO_TEXT)
+			self.item_info.setText(self.create_info_text(*ShopScene.ENERGY_INFO, round(ShopScene.ENERGY_START_COST * cost_multiplier)))
 			draw_text_info = True
 
-		if clicked["up1"]:
-			self.player_stats.handle_bulk_buy(keys, 5, lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 1))
+		if clicked["shovel"]:
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.SHOVEL_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 1))
 		
-		if clicked["up2"]:
-			self.player_stats.handle_bulk_buy(keys, 10, lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 3))
+		if clicked["health"]:
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.HEALTH_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "max_health", self.player_stats.max_health + 1))
 	
 		if clicked["stash_button"]:
-			self.player_stats.handle_bulk_buy(keys, 10, lambda: setattr(self.player_stats, "max_block", self.player_stats.max_block + 30))
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.STASH_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "max_block", self.player_stats.max_block + 30))
 		
 		if clicked["energy_button"]:
-			self.player_stats.handle_bulk_buy(keys, 5, lambda: setattr(self.player_stats, "max_energy", self.player_stats.max_energy + 20))
-		
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.ENERGY_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "max_energy", self.player_stats.max_energy + 20))
+
 		self.shop_group.draw()
-		self.shop_group2.draw()
 		if draw_text_info:
 			self.item_info.draw()
 
