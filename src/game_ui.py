@@ -3,18 +3,20 @@ import pygwidgets
 import game_essential as game
 
 class UIGroup:
-	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
+	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay | FadeDisplay ]):
 		self.ui_dict = ui_dict
 
-	def add(self, key: str, ui: ScalableButton | ScalableDisplay):
+	def add(self, key: str, ui: ScalableButton | ScalableDisplay | FadeDisplay):
 		self.ui_dict[key] = ui
 
-	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
+	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay | FadeDisplay]):
 		self.ui_dict.update(ui_dict)
 	
 	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> dict[str, bool]:
 		clicked: dict[str, bool] = {}
 		for key, ui in self.ui_dict.items():
+			if isinstance(ui, FadeDisplay):
+				ui.trigger()
 			if not isinstance(ui, ScalableButton):
 				continue
 			clicked[key] = ui.update(mouse_pos, events)
@@ -87,7 +89,7 @@ class ScalableButton:
 			self.screen.blit(self.up, (self.rect.x, self.rect.y))
 
 class ScalableDisplay:
-	def __init__(self, screen: pygame.Surface, pos: tuple[int, int], surf: pygame.Surface, scale: float = 1.0, anchor: str = "center", flip_x: bool = False, flip_y: bool = False):
+	def __init__(self, screen: pygame.Surface, pos: tuple[int, int] | pygame.Rect, surf: pygame.Surface, scale: float | int | tuple[float | int, float | int] , anchor: str = "center", flip_x: bool = False, flip_y: bool = False):
 		self.screen = screen
 		self.surf = pygame.transform.flip(surf, flip_x, flip_y)
 		self.surf = game.scale_surface(self.surf, scale)
@@ -138,24 +140,33 @@ class FadeDisplay:
 			self.screen.blit(self.surf, (self.rect.x, self.rect.y))
 
 class Bar:
-	def __init__(self, screen: pygame.Surface, base: pygame.Surface, over: pygame.Surface, color: str, pos: tuple[int,int], scale: float):
+	def __init__(self, screen: pygame.Surface, base: pygame.Surface, over: pygame.Surface, border: pygame.Surface, icon: pygame.Surface, pos: tuple[int,int], scale: float | int | tuple[float | int, float | int], icon_scale: float | int | tuple[float | int, float | int]):
 		self.screen = screen
-		self.pos = pos
-		
+		self.bar_pos = pos
+		self.scale = scale
+
 		self.base = game.scale_surface(base, scale)
+		self.border = game.scale_surface(border, scale)
 		self.over = game.scale_surface(over, scale)
-		self.color = color
-		self.over_w, self.over_h = self.over.get_rect().size
+		self.icon = game.scale_surface(icon, icon_scale)
+		self.over_size = self.over.get_rect().size
 
-	def draw(self, player_stats: game.PlayerStats, ratio: float | int):
-		if player_stats.game_over:
-			self.over = pygame.transform.scale(self.over, (self.over_w, self.over_h))
+		self.base_bar_rect = self.base.get_rect(topleft = pos)
+		self.border_rect = self.border.get_rect(center = self.base_bar_rect.center)
+		self.icon_rect = self.icon.get_rect(bottomright = self.border_rect.bottomleft)
+
+	def draw(self, player_stats: game.PlayerStats, ratio: float | int, info: pygame.Surface):
+		info_rect = info.get_rect(center = self.base_bar_rect.center)
 		
-		self.screen.blit(self.base, self.pos)
-
-		self.over = pygame.transform.scale(self.over, (self.over_w * ratio, self.over_h))
-		self.over.fill(self.color)
-		self.screen.blit(self.over, self.pos)
-
+		if player_stats.game_over:
+			pass
+		
+		self.screen.blit(self.base, self.base_bar_rect)
+		self.current_over = pygame.transform.scale(self.over, (self.over_size[0] * ratio, self.over_size[1]))
+		self.screen.blit(self.current_over, self.bar_pos)
+		self.screen.blit(self.border, self.border_rect)
+		self.screen.blit(self.icon, self.icon_rect)
+		self.screen.blit(info, info_rect)
+		
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
