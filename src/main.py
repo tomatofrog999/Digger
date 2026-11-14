@@ -150,11 +150,11 @@ class MainMenuScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.55 if FULL_SCREEN else 0.5
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "play.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'play_over.png'), True)
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
-		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "play.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'play_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "logo.png"), True)
 		
 		# Main Menu Button
 		new_game_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, round(SCREEN_HEIGHT / 1.775)), play_up_surf, play_over_surf, BUTTON_SCALE)
@@ -220,11 +220,11 @@ class PauseScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.55 if FULL_SCREEN else 0.5
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "play.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'play_over.png'), True)
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
-		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "play.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'play_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "logo.png"), True)
 		
 		# Main Menu Button
 		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
@@ -281,14 +281,14 @@ class MainScene(Scene):
 		self.can_pause = True
 		self.player_stats = player_stats
 
-		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_PATH, "break_effect.png"), True)
-		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "tiles_spritesheet.png"), True)
+		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "break_effect.png"), True)
+		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.png"), True)
 		# Layer 1
-		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_PATH, "tiles_spritesheet.txt"), "grassCenter")
+		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "grassCenter")
 		BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], 1, False)
 		BLOCK1_DATA = game.BlockData(BLOCK1_SURFACE, 3.0, 0.8)
 		
-		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_PATH, "tiles_spritesheet.txt"), "stoneCenter")
+		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "stoneCenter")
 		BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], 1, False)
 		BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 		
@@ -365,8 +365,8 @@ class MainScene(Scene):
 		self.display_text2 = pygwidgets.DisplayText(self.screen, (0, 0), "Test", textColor="white", fontSize=32)
 		self.display_text2.setCenteredLoc((SCREEN_WIDTH_HALF, SCREEN_HEIGHT - 20))
 
-		self.inv_full_popup_surface = game.scale_surface(game.load_picture(os.path.join(IMAGE_PATH, "inventory_full.png"), True), (2, 1.5))
-		self.exhausted_popup_surface = game.scale_surface(game.load_picture(os.path.join(IMAGE_PATH, "exhausted.png"), True), (2, 1.5))
+		self.inv_full_popup_surface = game.scale_surface(game.load_picture(os.path.join(IMAGE_UI_PATH, "inventory_full.png"), True), (2, 1.5))
+		self.exhausted_popup_surface = game.scale_surface(game.load_picture(os.path.join(IMAGE_UI_PATH, "exhausted.png"), True), (2, 1.5))
 		self.alert_popup = ui.FadeDisplay(self.screen, (0, 0), self.inv_full_popup_surface, 2000, 255, -10, (1, 1))
 
 		# Create player and animation
@@ -379,7 +379,7 @@ class MainScene(Scene):
 			game.PlayerSprite.AnimationState.FALL: game.PlayerSprite.AnimationData(11, 3, 150, True, 1),
 			game.PlayerSprite.AnimationState.DIG: game.PlayerSprite.AnimationData(17, 3, 100, False, 3)
 		}
-		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "doux.png"), True)
+		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "doux.png"), True)
 		
 		self.player = game.PlayerSprite(START_POS, PLAYER_HITBLOCK_SIZE, self.player_stats, self.game_state).init_screen(self.screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
 				.init_animation_data(ANIMATION_DICT)
@@ -613,23 +613,23 @@ class ShopScene(Scene):
 		UP_Y = 40
 		BUTTON_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 4 if FULL_SCREEN else 4
 
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "leave.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "leave_over.png"), True)
-		up1_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "up1.png"), True)
-		up1_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "up1_over.png"), True)
-		up2_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "up2.png"), True)
-		up2_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "up2_over.png"), True)
-		dealer_surf = game.load_picture(os.path.join(IMAGE_PATH, "dealer.png"), True)
-		border1_surf = game.load_picture(os.path.join(IMAGE_PATH, "border1.png"), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "leave.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "leave_over.png"), True)
+		shovel_up_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "shovel.png"), True)
+		shovel_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "shovel_over.png"), True)
+		health_up_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "shovel.png"), True)
+		health_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "shovel.png"), True)
+		dealer_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "dealer.png"), True)
+		border1_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "border1.png"), True)
 		border1_surf = game.scale_surface(border1_surf, (6, 9.85))
-		energy_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy.png"), True)
-		energy_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_over.png"), True)
-		stash_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash.png"), True)
-		stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_over.png"), True)
+		energy_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "energy.png"), True)
+		energy_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "energy_over.png"), True)
+		stash_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "stash.png"), True)
+		stash_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "stash_over.png"), True)
 		
 		leave_button = ui.ScalableButton(screen, (round(LEAVE_X), round(LEAVE_Y)), exit_up_surf, exit_over_surf, BUTTON_SCALE, "bottomright")
-		shovel_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, 6, "topleft")
-		health_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), up2_up_surf, up2_over_surf, 6, "topleft")
+		shovel_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), shovel_up_surf, shovel_over_surf, 6, "topleft")
+		health_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), health_up_surf, health_over_surf, 6, "topleft")
 		stash_button = ui.ScalableButton(screen, (round(UP_X), round(171)), stash_surf, stash_over_surf, 6, "topleft")
 		energy_button = ui.ScalableButton(screen, (round(43), round(302)), energy_surf, energy_over_surf, 6, "topleft")
 		
@@ -791,11 +791,11 @@ class GameOverScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.55 if FULL_SCREEN else 0.5
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "play.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'play_over.png'), True)
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
-		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "play.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'play_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "logo.png"), True)
 		
 		# Main Menu Button
 		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
