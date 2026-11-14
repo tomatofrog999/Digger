@@ -716,7 +716,7 @@ class ShopScene(Scene):
 class BarScene(Scene):
 	ENERGY_REFILL_COST = 10
 	HEALTH_REFILL_COST = 55
-	ITEM_COST_MULTIPLIER = 0.8
+	REFILL_COST_MULTIPLIER = 0.8
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
@@ -754,12 +754,12 @@ class BarScene(Scene):
 
 		keys = pygame.key.get_pressed()
 
-		cost_multiplier = (1 + self.player_stats.scene_finished_amount * ShopScene.ITEM_COST_MULTIPLIER)
+		cost_multiplier = (1 + self.player_stats.scene_finished_amount * BarScene.REFILL_COST_MULTIPLIER)
 		if clicked["convert"]:
 			self.player_stats.convert_block_to_money()
 
 		if clicked["add_energy"]:
-			if self.player_stats.buy(3):
+			if self.player_stats.buy(round(BarScene.ENERGY_REFILL_COST * cost_multiplier)):
 				self.player_stats.refill_energy()
 
 		if clicked["shop"]:
@@ -769,7 +769,7 @@ class BarScene(Scene):
 			self.scene_manager.go_back()
 
 		if clicked["add_health"]:
-			if self.player_stats.buy(20):
+			if self.player_stats.buy(round(BarScene.HEALTH_REFILL_COST * cost_multiplier)):
 				self.player_stats.refill_health()
 
 		
