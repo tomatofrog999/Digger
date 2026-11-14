@@ -325,7 +325,7 @@ class PlayerStats:
 		self.game_over = True
 
 	def convert_block_to_money(self):
-		money_gain = self.block // self.convertion_ratio
+		money_gain = math.floor(self.block / self.convertion_ratio)
 		block_remaining = self.block % self.convertion_ratio
 		self.money += money_gain
 		self.block = block_remaining
@@ -1168,8 +1168,8 @@ def delete_save(file_location: str):
 
 def reset(player_stats: PlayerStats, game_state: GameState, player_sprite: PlayerSprite):
 	player_stats.reset()
-	game_state.reset_block_broken()
 	game_state.reset_map()
+	game_state.reset_block_broken()
 	player_sprite.reset()
 
 def clamp(val: int | float, min_val: int | float, max_val: int | float) -> int | float:

@@ -590,11 +590,11 @@ class MainScene(Scene):
 		game.reset(self.player_stats, self.game_state, self.player)
 
 class ShopScene(Scene):
-	SHOVEL_START_COST = 20
-	STASH_START_COST = 10
-	ENERGY_START_COST = 15
-	HEALTH_START_COST = 40
-	ITEM_COST_MULTIPLIER = 0.12
+	SHOVEL_START_COST = 25
+	STASH_START_COST = 15
+	ENERGY_START_COST = 20
+	HEALTH_START_COST = 45
+	ITEM_COST_MULTIPLIER = 0.75
 	SHOVEL_INFO = ("Copper Shovel", "+1 Break Damage")
 	STASH_INFO = ("BF Bag", "+30 Bag Slot")
 	ENERGY_INFO = ("Monsta Energy", "+20 Max Energy")
@@ -714,6 +714,9 @@ class ShopScene(Scene):
 		self.dt = min(self.dt, 1 / FPS_UI)
 
 class BarScene(Scene):
+	ENERGY_REFILL_COST = 10
+	HEALTH_REFILL_COST = 55
+	ITEM_COST_MULTIPLIER = 0.8
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
@@ -750,7 +753,8 @@ class BarScene(Scene):
 					return
 
 		keys = pygame.key.get_pressed()
-		
+
+		cost_multiplier = (1 + self.player_stats.scene_finished_amount * ShopScene.ITEM_COST_MULTIPLIER)
 		if clicked["convert"]:
 			self.player_stats.convert_block_to_money()
 
@@ -819,7 +823,7 @@ class GameOverScene(Scene):
 				return
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
-					self.scene_manager.go_back()
+					self.scene_manager.change_scene(MAIN_MENU_SCENE_KEY, reset_stack=True)
 					return
 
 		self.screen.fill("#DA3131")
