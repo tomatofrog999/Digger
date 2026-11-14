@@ -152,13 +152,13 @@ class MainMenuScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 2 if FULL_SCREEN else 2
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "continue.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'continue_over.png'), True)
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_to_desktop.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_to_desktop_over.png"), True)
-		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "logo.png"), True)
-		new_game_surf = game.load_picture(os.path.join(IMAGE_PATH, "new_game.png"), True)
-		new_game_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "new_game_over.png"), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "continue.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'continue_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_to_desktop.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_to_desktop_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "logo.png"), True)
+		new_game_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "new_game.png"), True)
+		new_game_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "new_game_over.png"), True)
 		
 		# Main Menu Button
 		new_game_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, NEW_GAME_Y), new_game_surf, new_game_over_surf, BUTTON_SCALE)
@@ -225,13 +225,13 @@ class PauseScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 2 if FULL_SCREEN else 2
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "continue.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'continue_over.png'), True)
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
-		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "pause_logo.png"), True)
-		exit_desktop_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_to_desktop.png"), True)
-		exit_desktop_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_to_desktop_over.png"), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "continue.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'continue_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "pause_logo.png"), True)
+		exit_desktop_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_to_desktop.png"), True)
+		exit_desktop_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_to_desktop_over.png"), True)
 		
 		# Main Menu Button
 		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
@@ -288,15 +288,15 @@ class MainScene(Scene):
 		self.can_pause = True
 		self.player_stats = player_stats
 
-		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_PATH, "break_effect.png"), True)
-		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "tiles_spritesheet.png"), True)
+		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "break_effect.png"), True)
+		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.png"), True)
 		# Layer 1
-		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_PATH, "tiles_spritesheet.txt"), "grassCenter")
-		BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], 1, False)
+		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "grassCenter")
+		BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], (BLOCK_WIDTH / BLOCK1_SURFACE_DATA[1][0]), False)
 		BLOCK1_DATA = game.BlockData(BLOCK1_SURFACE, 3.0, 0.8)
 		
-		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_PATH, "tiles_spritesheet.txt"), "stoneCenter")
-		BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], 1, False)
+		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "stoneCenter")
+		BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], (BLOCK_WIDTH / BLOCK2_SURFACE_DATA[1][0]), False)
 		BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 		
 		LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20) \
@@ -339,7 +339,7 @@ class MainScene(Scene):
 		
 		self.platform_group = pygame.sprite.Group()
 		
-		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * BLOCK_PER_HEIGHT))
+		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
 		PLATFORM1_SURFACE.fill("brown")
 		PLATFORM2_SURFACE = PLATFORM1_SURFACE.copy()
 		
@@ -366,22 +366,22 @@ class MainScene(Scene):
 		self.platform_group.add(PLATFORM4)
 		self.game_state.init_platform_group(self.platform_group)
 
-		INV_FULL_POPUP_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "inventory_full.png"), True)
+		INV_FULL_POPUP_SURFACE = game.load_picture(os.path.join(IMAGE_UI_PATH, "inventory_full.png"), True)
 		self.inv_full_popup = ui.FadeDisplay(self.screen, (0, 0), INV_FULL_POPUP_SURFACE, 2000, 255, -10, (2, 1.5))
-		EXHAUSETED_POPUP_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "exhausted.png"), True)
+		EXHAUSETED_POPUP_SURFACE = game.load_picture(os.path.join(IMAGE_UI_PATH, "exhausted.png"), True)
 		self.exhausted_popup = ui.FadeDisplay(self.screen, (0,0), EXHAUSETED_POPUP_SURFACE, 2000, 255, -10, (2, 1.5))
 
 		# Create player and animation
 		ANIMATION_DICT = {
-			game.PlayerSprite.AnimationState.IDLE: game.PlayerSprite.AnimationData(0, 4, 150, True, 0),
-			game.PlayerSprite.AnimationState.WALK: game.PlayerSprite.AnimationData(4, 6, 120, True, 0),
-			game.PlayerSprite.AnimationState.JUMP: game.PlayerSprite.AnimationData(10, 4, 120, False, 3),
-			game.PlayerSprite.AnimationState.WALL_JUMP: game.PlayerSprite.AnimationData(10, 4, 100, False, 3),
-			game.PlayerSprite.AnimationState.WALL_SLIDE: game.PlayerSprite.AnimationData(5, 1, 200, True, 2),
-			game.PlayerSprite.AnimationState.FALL: game.PlayerSprite.AnimationData(11, 3, 150, True, 1),
-			game.PlayerSprite.AnimationState.DIG: game.PlayerSprite.AnimationData(17, 3, 100, False, 3)
+			game.PlayerSprite.AnimationState.IDLE: game.PlayerSprite.AnimationData(0, 3, 200, True, True, 0),
+			game.PlayerSprite.AnimationState.WALK: game.PlayerSprite.AnimationData(3, 3, 150, True, True, 0), 
+			game.PlayerSprite.AnimationState.JUMP: game.PlayerSprite.AnimationData(10, 3, 100, False, True, 3),
+			game.PlayerSprite.AnimationState.WALL_JUMP: game.PlayerSprite.AnimationData(10, 3, 140, False, False, 3),
+			game.PlayerSprite.AnimationState.WALL_SLIDE: game.PlayerSprite.AnimationData(9, 1, 200, True, False, 2),
+			game.PlayerSprite.AnimationState.FALL: game.PlayerSprite.AnimationData(12, 1, 300, True, True, 1),
+			game.PlayerSprite.AnimationState.DIG: game.PlayerSprite.AnimationData(6, 3, 100, False, True, 3)
 		}
-		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "doux.png"), True)
+		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "player_anim.png"), True)
 		
 		self.player = game.PlayerSprite(START_POS, PLAYER_HITBLOCK_SIZE, self.player_stats, self.game_state).init_screen(self.screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
 				.init_animation_data(ANIMATION_DICT)
@@ -395,7 +395,7 @@ class MainScene(Scene):
 		self.rhythm_handler.check_init()
 		
 		SHOP_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 10 if FULL_SCREEN else 10
-		SHOP_SURFACE = game.load_picture(os.path.join(IMAGE_PATH, "Tavern.png"), True)
+		SHOP_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "Tavern.png"), True)
 		SHOP_SIZE = SHOP_SURFACE.get_rect().size
 		SHOP_SURFACE = pygame.transform.scale(SHOP_SURFACE, (SHOP_SIZE[0] * SHOP_SCALE, SHOP_SIZE[1] * SHOP_SCALE))
 
@@ -403,15 +403,15 @@ class MainScene(Scene):
 		self.shop.get_rect().bottomleft = (MINE_POS[0] + BLOCK_WIDTH * (BLOCK_PER_WIDTH + 2), MINE_POS[1])				
 
 		BAR_POS_X = round(SCREEN_WIDTH*0.1)
-		base_surf = game.load_picture(os.path.join(IMAGE_PATH, "base_bar.png"), True)		
-		border_surf = game.load_picture(os.path.join(IMAGE_PATH, "base_border.png"), True)
-		hp_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "health_bar.png"), True)
-		hp_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "health_icon.png"), True)
-		energy_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_bar.png"), True)		
-		energy_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_icon.png"), True)
-		stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_bar.png"), True)
-		stash_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_icon.png"), True)
-		money_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "gem_icon.png"), True)	
+		base_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "base_bar.png"), True)		
+		border_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "base_border.png"), True)
+		hp_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "health_bar.png"), True)
+		hp_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "health_icon.png"), True)
+		energy_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "energy_bar.png"), True)		
+		energy_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "energy_icon.png"), True)
+		stash_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "stash_bar.png"), True)
+		stash_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "stash_icon.png"), True)
+		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)	
 
 		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, border_surf, hp_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.05)), BAR_SCALE, ICON_SCALE)
 		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.13)), BAR_SCALE, ICON_SCALE)
@@ -439,8 +439,6 @@ class MainScene(Scene):
 		super().run_loop()
 		events = pygame.event.get()
 		pressed_dig = False
-		pressed_enter = False
-		
 		for event in events:
 			if event.type == pygame.QUIT:
 				self.scene_manager.stop()
@@ -451,13 +449,10 @@ class MainScene(Scene):
 					return
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
-				if event.key == pygame.K_RETURN:
-					pressed_enter = True
 
 		self.screen.fill("#171722")
 		
 		keys = pygame.key.get_pressed()
-		mouse_pos = pygame.mouse.get_pos()
 
 		self.rhythm_handler.update(self.player, pressed_dig)
 
@@ -541,7 +536,14 @@ class MainScene(Scene):
 		self.stash_bar.draw(self.player_stats, stash_ratio, stash_info_surf)
 		self.money_icon.draw()
 		self.screen.blit(money_info_surf, (round(SCREEN_WIDTH * 0.92),round(SCREEN_HEIGHT * 0.05)))
-		
+
+		# HITBLOCK RENDER TEST
+		# temporary for check only
+		temp = pygame.Surface(self.player.get_rect().size).convert_alpha()
+		temp.fill((0, 150, 0, 100))
+		temp_x , temp_y = self.player.get_rect().topleft
+
+		self.screen.blit(temp, (round(temp_x + cam_offset[0]), round(temp_y + cam_offset[1])))
 
 		pygame.display.flip()
 
@@ -566,14 +568,19 @@ class MainScene(Scene):
 		game.reset(self.player_stats, self.game_state, self.player)
 
 class ShopScene(Scene):
-	UP1_NAME_TEXT = "Shovel Upgrade"
-	UP1_INFO_TEXT = "+1 Break Damage"
+	SHOVEL_START_COST = 25
+	STASH_START_COST = 15
+	ENERGY_START_COST = 20
+	HEALTH_START_COST = 45
+	ITEM_COST_MULTIPLIER = 0.75
+	SHOVEL_NAME_TEXT = "Shovel Upgrade"
+	SHOVEL_INFO_TEXT = "+1 Break Damage"
 	STASH_NAME_TEXT = "Inventory Upgrade"
 	STASH_INFO_TEXT = "+30 Bag Slot"
 	ENERGY_NAME_TEXT = "Max Energy Upgrade"
 	ENERGY_INFO_TEXT = "+20 Max Energy"
 	HP_NAME_TEXT = "Max Health UP"
-	HP_INFO_TEXT = "+20 Max HP"
+	HP_INFO_TEXT = "+1 Max HP"
 	
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
@@ -596,19 +603,19 @@ class ShopScene(Scene):
 		self.font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 26.25) if FULL_SCREEN else 30)
 		self.money_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 21.25) if FULL_SCREEN else 25)
 
-		dealer_surf = game.load_picture(os.path.join(IMAGE_PATH, "dealer.png"), True)
-		up1_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "dig_up.png"), True)
-		up1_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "dig_up_over.png"), True)
-		energy_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_up.png"), True)
-		energy_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_up_over.png"), True)
-		stash_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_up.png"), True)
-		stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_up_over.png"), True)
-		hp_surf = game.load_picture(os.path.join(IMAGE_PATH, "health_up.png"), True)
-		hp_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "health_up_over.png"), True)
+		dealer_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "dealer.png"), True)
+		shovel_up_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "dig_up.png"), True)
+		shovel_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "dig_up_over.png"), True)
+		energy_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "energy_up.png"), True)
+		energy_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "energy_up_over.png"), True)
+		stash_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "stash_up.png"), True)
+		stash_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "stash_up_over.png"), True)
+		hp_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "health_up.png"), True)
+		hp_over_surf = game.load_picture(os.path.join(IMAGE_ITEM_PATH, "health_up_over.png"), True)
 		leave_surf = self.font.render("Leave →", True, WHITE, BLACK, WRAPLENGTH)
 		leave_over_surf = self.font.render("Leave →", True, BLACK, WHITE, WRAPLENGTH)
 
-		up1_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), up1_up_surf, up1_over_surf, UP_SCALE, "topleft")
+		shovel_button = ui.ScalableButton(screen, (round(UP_X), round(UP_Y)), shovel_up_surf, shovel_over_surf, UP_SCALE, "topleft")
 		stash_button = ui.ScalableButton(screen, (round(UP2_X), round(UP_Y)), stash_surf, stash_over_surf, UP_SCALE, "topleft")
 		energy_button = ui.ScalableButton(screen, (round(UP3_X), round(UP_Y)), energy_surf, energy_over_surf, UP_SCALE, "topleft")
 		max_hp_button = ui.ScalableButton(screen, (round(UP4_X), round(UP_Y)), hp_surf, hp_over_surf, UP_SCALE, "topleft")
@@ -631,12 +638,12 @@ class ShopScene(Scene):
 		self.ui_bg_rect = self.ui_bg.get_rect(topleft=(SCREEN_WIDTH*0.06,SCREEN_HEIGHT*0.64))
 		self.ui_bg_border_rect = self.ui_bg_border.get_rect(center = self.ui_bg_rect.center)
 
-		money_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "gem_icon.png"), True)
+		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)
 		self.money_icon = ui.ScalableDisplay(self.screen, (round(SCREEN_WIDTH * 0.87),round(SCREEN_HEIGHT * 0.07)), money_icon_surf, ICON_SCALE)
 		
 		self.shop_group = ui.UIGroup({
 			"leave": leave_button,
-			"up1": up1_button,  
+			"shovel": shovel_button,  
 			"dealer": dealer,
 			"stash": stash_button, 
 			"energy": energy_button,
@@ -661,51 +668,57 @@ class ShopScene(Scene):
 				if event.key == pygame.K_ESCAPE:
 					self.scene_manager.go_back()
 					return
-		if clicked["max_hp"]:
-			self.player_stats.handle_bulk_buy(keys, 30, lambda: setattr(self.player_stats, "max_health", self.player_stats.max_health + 1))
 		
 		if clicked["leave"]:
 			self.scene_manager.go_back()
 			return
 
+		cost_multiplier = (1 + self.player_stats.scene_finished_amount * ShopScene.ITEM_COST_MULTIPLIER)
 		draw_text_info = False
-		if isinstance(self.shop_group.ui_dict["up1"], ui.ScalableButton) and self.shop_group.ui_dict["up1"].activated:
-			name_surf = self.font.render(ShopScene.UP1_NAME_TEXT, True, WHITE)
+		name_surf = self.font.render("", True, WHITE)
+		name_rect = name_surf.get_rect(center = self.NAME_POS)
+		info_surf = self.bar_font.render("", True, WHITE)
+		info_rect = info_surf.get_rect(center = self.INFO_POS)
+		if isinstance(self.shop_group.ui_dict["shovel"], ui.ScalableButton) and self.shop_group.ui_dict["shovel"].activated:
+			name_surf = self.font.render(ShopScene.SHOVEL_NAME_TEXT, True, WHITE)
 			name_rect = name_surf.get_rect(center = self.NAME_POS)
-			info_surf = self.bar_font.render(ShopScene.UP1_INFO_TEXT, True, WHITE)
+			info_surf = self.bar_font.render(f"{ShopScene.SHOVEL_INFO_TEXT}\ncost: {round(ShopScene.SHOVEL_START_COST * cost_multiplier)}", True, WHITE)
 			info_rect = info_surf.get_rect(center = self.INFO_POS)
 			draw_text_info = True
 
 		if isinstance(self.shop_group.ui_dict["stash"], ui.ScalableButton) and self.shop_group.ui_dict["stash"].activated:
 			name_surf = self.font.render(ShopScene.STASH_NAME_TEXT, True, WHITE)
 			name_rect = name_surf.get_rect(center = self.NAME_POS)
-			info_surf = self.bar_font.render(ShopScene.STASH_INFO_TEXT, True, WHITE)
+			info_surf = self.bar_font.render(f"{ShopScene.STASH_INFO_TEXT}\ncost: {round(ShopScene.STASH_START_COST * cost_multiplier)}", True, WHITE)
 			info_rect = info_surf.get_rect(center = self.INFO_POS)
 			draw_text_info = True
 
 		if isinstance(self.shop_group.ui_dict["energy"], ui.ScalableButton) and self.shop_group.ui_dict["energy"].activated:
 			name_surf = self.font.render(ShopScene.ENERGY_NAME_TEXT, True, WHITE)
 			name_rect = name_surf.get_rect(center = self.NAME_POS)
-			info_surf = self.bar_font.render(ShopScene.ENERGY_INFO_TEXT, True, WHITE)
+			info_surf = self.bar_font.render(f"{ShopScene.ENERGY_INFO_TEXT}\ncost: {round(ShopScene.ENERGY_START_COST * cost_multiplier)}", True, WHITE)
 			info_rect = info_surf.get_rect(center = self.INFO_POS)
 			draw_text_info = True
 		
 		if isinstance(self.shop_group.ui_dict["max_hp"], ui.ScalableButton) and self.shop_group.ui_dict["max_hp"].activated:
 			name_surf = self.font.render(ShopScene.HP_NAME_TEXT, True, WHITE)
 			name_rect = name_surf.get_rect(center = self.NAME_POS)
-			info_surf = self.bar_font.render(ShopScene.HP_INFO_TEXT, True, WHITE)
+			info_surf = self.bar_font.render(f"{ShopScene.HP_INFO_TEXT}\ncost: {round(ShopScene.HEALTH_START_COST * cost_multiplier)}", True, WHITE)
 			info_rect = info_surf.get_rect(center = self.INFO_POS)
 			draw_text_info = True
 
-		if clicked["up1"]:
-			self.player_stats.handle_bulk_buy(keys, 5, lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 1))
-		
+		if clicked["shovel"]:
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.SHOVEL_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "break_damage", self.player_stats.break_damage + 1))
+
+		if clicked["max_hp"]:
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.HEALTH_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "max_health", self.player_stats.max_health + 1))
+				
 		
 		if clicked["stash"]:
-			self.player_stats.handle_bulk_buy(keys, 10, lambda: setattr(self.player_stats, "max_block", self.player_stats.max_block + 30))
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.STASH_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "max_block", self.player_stats.max_block + 30))
 		
 		if clicked["energy"]:
-			self.player_stats.handle_bulk_buy(keys, 5, lambda: setattr(self.player_stats, "max_energy", self.player_stats.max_energy + 20))
+			self.player_stats.handle_bulk_buy(keys, round(ShopScene.ENERGY_START_COST * cost_multiplier), lambda: setattr(self.player_stats, "max_energy", self.player_stats.max_energy + 20))
 		
 		self.shop_group.draw()
 
@@ -732,20 +745,23 @@ class ShopScene(Scene):
 		self.dt = min(self.dt, 1 / FPS_UI)
 
 class BarScene(Scene):
+	ENERGY_REFILL_COST = 10
+	HEALTH_REFILL_COST = 55
+	REFILL_COST_MULTIPLIER = 0.8
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
 
 		BAR_POS_X = round(SCREEN_WIDTH*0.1)
 
-		base_surf = game.load_picture(os.path.join(IMAGE_PATH, "base_bar.png"), True)		
-		border_surf = game.load_picture(os.path.join(IMAGE_PATH, "base_border.png"), True)
-		hp_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "health_bar.png"), True)
-		hp_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "health_icon.png"), True)
-		energy_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_bar.png"), True)		
-		energy_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "energy_icon.png"), True)
-		stash_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_bar.png"), True)
-		stash_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "stash_icon.png"), True)
+		base_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "base_bar.png"), True)		
+		border_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "base_border.png"), True)
+		hp_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "health_bar.png"), True)
+		hp_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "health_icon.png"), True)
+		energy_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "energy_bar.png"), True)		
+		energy_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "energy_icon.png"), True)
+		stash_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "stash_bar.png"), True)
+		stash_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "stash_icon.png"), True)
 
 		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, border_surf, hp_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.05)), BAR_SCALE, ICON_SCALE)
 		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.13)), BAR_SCALE, ICON_SCALE)
@@ -766,7 +782,7 @@ class BarScene(Scene):
 		shop_over_surf = self.font.render("• Buy Upgrade", True, BLACK, WHITE, WRAPLENGTH)
 		leave_over_surf = self.font.render("Leave →", True, BLACK, WHITE, WRAPLENGTH)
 		add_health_over_surf = self.font.render("• Heal", True, BLACK, WHITE, WRAPLENGTH)
-		money_icon_surf = game.load_picture(os.path.join(IMAGE_PATH, "gem_icon.png"), True)	
+		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)	
 
 		BUTTON_X_1 = round(SCREEN_WIDTH / 3.5) if FULL_SCREEN else round(SCREEN_WIDTH / 4.5)
 		BUTTON_X_2 = round(SCREEN_WIDTH / 1.85)
@@ -819,13 +835,12 @@ class BarScene(Scene):
 					self.scene_manager.go_back()
 					return
 
-		keys = pygame.key.get_pressed()
-		
+		cost_multiplier = (1 + self.player_stats.scene_finished_amount * BarScene.REFILL_COST_MULTIPLIER)
 		if clicked["convert"]:
 			self.player_stats.convert_block_to_money()
 
 		if clicked["add_energy"]:
-			if self.player_stats.buy(3):
+			if self.player_stats.buy(round(BarScene.ENERGY_REFILL_COST * cost_multiplier)):
 				self.player_stats.refill_energy()
 
 		if clicked["shop"]:
@@ -835,7 +850,7 @@ class BarScene(Scene):
 			self.scene_manager.go_back()
 
 		if clicked["add_health"]:
-			if self.player_stats.buy(20):
+			if self.player_stats.buy(round(BarScene.HEALTH_REFILL_COST * cost_multiplier)):
 				self.player_stats.refill_health()
 
 		self.screen.blit(self.ui_bg_border, self.ui_bg_border_rect)
@@ -885,13 +900,13 @@ class GameOverScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 2 if FULL_SCREEN else 2
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "continue.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_PATH, 'continue_over.png'), True)
-		exit_up_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit.png"), True)
-		exit_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_over.png"), True)
-		logo_surf = game.load_picture(os.path.join(IMAGE_PATH, "game_over_logo.png"), True)
-		exit_desktop_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_to_desktop.png"), True)
-		exit_desktop_over_surf = game.load_picture(os.path.join(IMAGE_PATH, "exit_to_desktop_over.png"), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "continue.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'continue_over.png'), True)
+		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
+		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
+		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "game_over_logo.png"), True)
+		exit_desktop_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_to_desktop.png"), True)
+		exit_desktop_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_to_desktop_over.png"), True)
 		
 		# Main Menu Button
 		play_button = ui.ScalableButton(screen, (SCREEN_WIDTH_HALF, PLAY_BTN_Y), play_up_surf, play_over_surf, BUTTON_SCALE)
@@ -913,10 +928,6 @@ class GameOverScene(Scene):
 			if event.type == pygame.QUIT:
 				self.scene_manager.stop()
 				return
-			elif event.type == pygame.KEYDOWN:
-				if event.key == pygame.K_ESCAPE:
-					self.scene_manager.go_back()
-					return
 
 		self.screen.fill("#DA3131")
 

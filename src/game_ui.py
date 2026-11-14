@@ -3,20 +3,18 @@ import pygwidgets
 import game_essential as game
 
 class UIGroup:
-	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay | FadeDisplay ]):
+	def __init__(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
 		self.ui_dict = ui_dict
 
-	def add(self, key: str, ui: ScalableButton | ScalableDisplay | FadeDisplay):
+	def add(self, key: str, ui: ScalableButton | ScalableDisplay):
 		self.ui_dict[key] = ui
 
-	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay | FadeDisplay]):
+	def add_dict(self, ui_dict: dict[str, ScalableButton | ScalableDisplay]):
 		self.ui_dict.update(ui_dict)
 	
 	def update(self, mouse_pos: tuple[int, int], events: list[pygame.Event]) -> dict[str, bool]:
 		clicked: dict[str, bool] = {}
 		for key, ui in self.ui_dict.items():
-			if isinstance(ui, FadeDisplay):
-				ui.trigger()
 			if not isinstance(ui, ScalableButton):
 				continue
 			clicked[key] = ui.update(mouse_pos, events)

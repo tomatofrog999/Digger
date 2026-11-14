@@ -109,6 +109,20 @@ class PlatformSprite(pygame.sprite.Sprite):
 			raise TypeError("'rect' variable need to be pygame.Rect type.")
 		return self.rect
 
+class EndBlock(Block):
+	def __init__(self, surface: pygame.Surface, topleft: tuple[int, int], max_health: float, flip_x: bool, flip_y: bool, money_addition: int, energy_usage: int):
+		super().__init__(surface, topleft, max_health, flip_x, flip_y, False, energy_usage)
+		self.money_addition = money_addition
+
+	def destroy(self, player_stats: PlayerStats):
+		super().kill()
+		player_stats.add_money(self.money_addition)
+
+	def get_rect(self) -> pygame.Rect:
+		if not isinstance(self.rect, pygame.Rect):
+			raise TypeError("'rect' variable need to be pygame.Rect type.")
+		return self.rect
+
 class PlayerStats:
 	def __init__(self):
 		self.max_health = -1
@@ -310,7 +324,7 @@ class PlayerStats:
 		self.game_over = True
 
 	def convert_block_to_money(self):
-		money_gain = self.block // self.convertion_ratio
+		money_gain =  math.floor(self.block / self.convertion_ratio)
 		block_remaining = self.block % self.convertion_ratio
 		self.money += money_gain
 		self.block = block_remaining
@@ -335,12 +349,13 @@ class PlayerStats:
 
 class PlayerSprite(pygame.sprite.Sprite):
 	class AnimationData:
-		def __init__(self, start_index: int, step: int, cooldown_ms: int, loop: bool, priority: int):
+		def __init__(self, start_index: int, step: int, cooldown_ms: int, loop: bool, flip: bool, priority: int):
 			self.start_index = start_index
 			self.step = step
 			self.cooldown_ms = cooldown_ms
 			self.loop = loop
 			self.priority = priority
+			self.flip = flip
 			self.surfaces: tuple[pygame.Surface, ...] = ()
 
 	class AnimationState(Enum):
@@ -465,11 +480,12 @@ class PlayerSprite(pygame.sprite.Sprite):
 			return animation_dict[PlayerSprite.AnimationState.IDLE]
 		return animation_dict[state]
 
-	def set_surface(self, animation_surface: pygame.Surface, size_per_image: tuple[int, int], surface_scale: int):
+	def set_surface(self, animation_surface: pygame.Surface, size_per_image: tuple[int, int], surface_scale: int | float):
 		for animation in self.get_animation_dict().values():
 			temp_list = []
 			for i in range(animation.start_index, animation.start_index + animation.step):
 				temp_list.append(get_surface_from_sprite_sheet(animation_surface, (i, 0), size_per_image, surface_scale, True))
+			temp_list = [pygame.transform.flip(surf, animation.flip, False) for surf in temp_list]
 			animation.surfaces = tuple(temp_list)
 		default_animation = self.get_animation_data(PlayerSprite.AnimationState.IDLE)
 		self.image = default_animation.surfaces[0]
@@ -860,6 +876,11 @@ class MapData:
 				block_group.add(block)
 				block_x += self.block_width
 			block_y += self.block_height
+		block_x = 0
+		end_block = pygame.Surface((self.block_width * width, self.block_height * 4))
+		end_block.fill("green")
+		block = EndBlock(end_block, (block_x + map_position[0], block_y + map_position[1]), sorted(layer.block_tuple, key=lambda x: x.max_health)[0].max_health * width, False, False, layer.treasure_addition * width, layer.energy_usage)
+		block_group.add(block)
 		return block_group
 
 class Camera:
@@ -1149,8 +1170,8 @@ def delete_save(file_location: str):
 
 def reset(player_stats: PlayerStats, game_state: GameState, player_sprite: PlayerSprite):
 	player_stats.reset()
-	game_state.reset_block_broken()
 	game_state.reset_map()
+	game_state.reset_block_broken()
 	player_sprite.reset()
 
 def clamp(val: int | float, min_val: int | float, max_val: int | float) -> int | float:
@@ -1225,18 +1246,6 @@ def scale_surface(surface: pygame.Surface, scale: float | int | tuple[float | in
 		return pygame.transform.scale(surface, (round(width * scale), round(height * scale)))
 	else:
 		return pygame.transform.scale(surface, (round(width * scale[0]), round(height * scale[1])))
-
-def tuple_add(t1: tuple[int | float, ...], t2: tuple[int | float, ...]):
-	if len(t1) != len(t2):
-		raise ValueError("Length not equals.")
-
-	return tuple([t1[i] + t2[i] for i in range(len(t1))])
-
-def tuple_multiply(t1: tuple[int | float, ...], constant: float | int):
-	return tuple([t1[i] * constant for i in range(len(t1))])
-
-def tuple_divide(t1: tuple[int | float, ...], constant: float | int):
-	return tuple([t1[i] * constant for i in range(len(t1))])
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
