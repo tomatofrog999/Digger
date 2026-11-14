@@ -286,10 +286,12 @@ class MainScene(Scene):
 		# Layer 1
 		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "grassCenter")
 		BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], 1, False)
+		BLOCK1_SURFACE = game.scale_surface(BLOCK1_SURFACE, (BLOCK_WIDTH / BLOCK1_SURFACE.size[0]))
 		BLOCK1_DATA = game.BlockData(BLOCK1_SURFACE, 3.0, 0.8)
 		
 		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "stoneCenter")
 		BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], 1, False)
+		BLOCK2_SURFACE = game.scale_surface(BLOCK2_SURFACE, (BLOCK_WIDTH / BLOCK2_SURFACE.size[0]))
 		BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 		
 		LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20) \
@@ -371,16 +373,15 @@ class MainScene(Scene):
 
 		# Create player and animation
 		ANIMATION_DICT = {
-			game.PlayerSprite.AnimationState.IDLE: game.PlayerSprite.AnimationData(0, 4, 150, True, 0),
-			game.PlayerSprite.AnimationState.WALK: game.PlayerSprite.AnimationData(4, 6, 120, True, 0),
-			game.PlayerSprite.AnimationState.JUMP: game.PlayerSprite.AnimationData(10, 4, 120, False, 3),
-			game.PlayerSprite.AnimationState.WALL_JUMP: game.PlayerSprite.AnimationData(10, 4, 100, False, 3),
-			game.PlayerSprite.AnimationState.WALL_SLIDE: game.PlayerSprite.AnimationData(5, 1, 200, True, 2),
-			game.PlayerSprite.AnimationState.FALL: game.PlayerSprite.AnimationData(11, 3, 150, True, 1),
-			game.PlayerSprite.AnimationState.DIG: game.PlayerSprite.AnimationData(17, 3, 100, False, 3)
+			game.PlayerSprite.AnimationState.IDLE: game.PlayerSprite.AnimationData(0, 3, 200, True, True, 0),
+			game.PlayerSprite.AnimationState.WALK: game.PlayerSprite.AnimationData(3, 3, 150, True, True, 0), 
+			game.PlayerSprite.AnimationState.JUMP: game.PlayerSprite.AnimationData(10, 3, 100, False, True, 3),
+			game.PlayerSprite.AnimationState.WALL_JUMP: game.PlayerSprite.AnimationData(10, 3, 140, False, False, 3),
+			game.PlayerSprite.AnimationState.WALL_SLIDE: game.PlayerSprite.AnimationData(9, 1, 200, True, False, 2),
+			game.PlayerSprite.AnimationState.FALL: game.PlayerSprite.AnimationData(12, 1, 300, True, True, 1),
+			game.PlayerSprite.AnimationState.DIG: game.PlayerSprite.AnimationData(6, 3, 100, False, True, 3)
 		}
-		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "doux.png"), True)
-		
+		PLAYER_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "player_anim.png"), True)
 		self.player = game.PlayerSprite(START_POS, PLAYER_HITBLOCK_SIZE, self.player_stats, self.game_state).init_screen(self.screen).init_image_offset(PLAYER_IMAGE_OFFSET) \
 				.init_animation_data(ANIMATION_DICT)
 		self.player.set_surface(PLAYER_SURFACE, PLAYER_SURFACE_SIZE, PLAYER_SURFACE_SCALE)
@@ -559,6 +560,16 @@ class MainScene(Scene):
 		self.alert_popup.draw()
 
 		self.ui_group1.draw()
+
+		
+		# HITBLOCK RENDER TEST
+		# temporary for check only
+		temp = pygame.Surface(self.player.get_rect().size).convert_alpha()
+		temp.fill((0, 150, 0, 100))
+		temp_x , temp_y = self.player.get_rect().topleft
+
+		self.screen.blit(temp, (round(temp_x + cam_offset[0]), round(temp_y + cam_offset[1])))
+
 
 		hp_ratio = game.clamp(self.player_stats.health / self.player_stats.max_health, 0, 1)
 		self.hp_bar.draw(self.player_stats, hp_ratio)

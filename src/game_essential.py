@@ -350,12 +350,13 @@ class PlayerStats:
 
 class PlayerSprite(pygame.sprite.Sprite):
 	class AnimationData:
-		def __init__(self, start_index: int, step: int, cooldown_ms: int, loop: bool, priority: int):
+		def __init__(self, start_index: int, step: int, cooldown_ms: int, loop: bool, flip: bool, priority: int):
 			self.start_index = start_index
 			self.step = step
 			self.cooldown_ms = cooldown_ms
 			self.loop = loop
 			self.priority = priority
+			self.flip = flip
 			self.surfaces: tuple[pygame.Surface, ...] = ()
 
 	class AnimationState(Enum):
@@ -480,11 +481,12 @@ class PlayerSprite(pygame.sprite.Sprite):
 			return animation_dict[PlayerSprite.AnimationState.IDLE]
 		return animation_dict[state]
 
-	def set_surface(self, animation_surface: pygame.Surface, size_per_image: tuple[int, int], surface_scale: int):
+	def set_surface(self, animation_surface: pygame.Surface, size_per_image: tuple[int, int], surface_scale: int | float):
 		for animation in self.get_animation_dict().values():
 			temp_list = []
 			for i in range(animation.start_index, animation.start_index + animation.step):
 				temp_list.append(get_surface_from_sprite_sheet(animation_surface, (i, 0), size_per_image, surface_scale, True))
+			temp_list = [pygame.transform.flip(surf, animation.flip, False) for surf in temp_list]
 			animation.surfaces = tuple(temp_list)
 		default_animation = self.get_animation_data(PlayerSprite.AnimationState.IDLE)
 		self.image = default_animation.surfaces[0]
@@ -1252,9 +1254,6 @@ def tuple_add(t1: tuple[int | float, ...], t2: tuple[int | float, ...]):
 	return tuple([t1[i] + t2[i] for i in range(len(t1))])
 
 def tuple_multiply(t1: tuple[int | float, ...], constant: float | int):
-	return tuple([t1[i] * constant for i in range(len(t1))])
-
-def tuple_divide(t1: tuple[int | float, ...], constant: float | int):
 	return tuple([t1[i] * constant for i in range(len(t1))])
 
 if __name__ == "__main__":
