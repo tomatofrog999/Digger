@@ -537,14 +537,6 @@ class MainScene(Scene):
 		self.money_icon.draw()
 		self.screen.blit(money_info_surf, (round(SCREEN_WIDTH * 0.92),round(SCREEN_HEIGHT * 0.05)))
 
-		# HITBLOCK RENDER TEST
-		# temporary for check only
-		temp = pygame.Surface(self.player.get_rect().size).convert_alpha()
-		temp.fill((0, 150, 0, 100))
-		temp_x , temp_y = self.player.get_rect().topleft
-
-		self.screen.blit(temp, (round(temp_x + cam_offset[0]), round(temp_y + cam_offset[1])))
-
 		pygame.display.flip()
 
 		self.dt = self.clock.tick(FPS) / 1000
