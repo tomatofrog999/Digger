@@ -1,6 +1,7 @@
 .vscode/
 __pycache__/
 temp/
+backups/
 
 *.bak
 *.txt2

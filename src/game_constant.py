@@ -1,6 +1,5 @@
 import pygame
 import os
-import game_essential as game
 
 pygame.init()
 pygame.mixer.init()
@@ -20,6 +19,9 @@ CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 BASE_PATH = os.path.dirname(CURRENT_PATH)
 ASSET_PATH = os.path.join(BASE_PATH, "assets")
 IMAGE_PATH = os.path.join(ASSET_PATH, "images")
+IMAGE_ITEM_PATH = os.path.join(IMAGE_PATH, "items")
+IMAGE_MAIN_PATH = os.path.join(IMAGE_PATH, "main")
+IMAGE_UI_PATH = os.path.join(IMAGE_PATH, "ui")
 MUSIC_PATH = os.path.join(ASSET_PATH, "musics")
 FONT_PATH = os.path.join(ASSET_PATH, "fonts")
 
@@ -27,10 +29,10 @@ FPS = 120
 FPS_UI = 20
 TARGET_TICK = FPS // 4
 
-PLAYER_HITBLOCK_SIZE = (25, 50)
-PLAYER_SURFACE_SIZE = (24, 24)
-PLAYER_SURFACE_SCALE = 3
-PLAYER_IMAGE_OFFSET = (-24, -15)
+PLAYER_HITBLOCK_SIZE = (48, 75)
+PLAYER_SURFACE_SIZE = (256, 256)
+PLAYER_SURFACE_SCALE = 100 / PLAYER_SURFACE_SIZE[0]
+PLAYER_IMAGE_OFFSET = (-26, -15)
 
 CAM_SPEED_SCALE = 4.0 # add up this much per distance(pixel)
 CAM_MIN_DISTANCE = 10.0
@@ -55,8 +57,8 @@ RHYTHM_BAR_LINE_RATIO = 0.3
 BREAK_EFFECT_LENGTH = 7
 BREAK_EFFECT_WIDTH = 32
 
-BLOCK_WIDTH = 70
-BLOCK_HEIGHT = 70
+BLOCK_WIDTH = 90
+BLOCK_HEIGHT = 90
 
 GRAVITY_ACCELERATION = 640
 
@@ -67,7 +69,7 @@ END_MINE_POS = (MINE_POS[0] + BLOCK_WIDTH * BLOCK_PER_WIDTH, MINE_POS[1] + BLOCK
 CAM_CUTOFF_RIGHT = END_MINE_POS[0] + 5 * BLOCK_WIDTH
 CAM_CUTOFF_LEFT = MINE_POS[0] - 15 * BLOCK_WIDTH
 
-WORLD_START_SEED = 1
+WORLD_START_SEED = -9064
 SAVE_VERSION = 1.4
 SAVE_FILE_EXTENSION = ".gamesave"
 AUTO_SAVE_FILE_NAME = "autosave"+SAVE_FILE_EXTENSION
