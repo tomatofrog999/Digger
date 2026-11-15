@@ -334,13 +334,21 @@ class MainScene(Scene):
 					.init_treasure(0.05, 80).init_multiblock_rate(0.03).init_energy_usage(4)
 		LAYER3_DATA.check_init()
 		
-		
-		MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT)
+		BOMB_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+		BOMB_SURFACE.fill("red")
+		ENERGY_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+		ENERGY_SURFACE.fill("green")
+		TREASURE_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
+		TREASURE_SURFACE.fill("blue")
+		MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT, BOMB_SURFACE, ENERGY_SURFACE, TREASURE_SURFACE)
+
+		self.underground_surface = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
+		self.underground_surface.fill("#2A2319")
 		
 		self.platform_group = pygame.sprite.Group()
 		
 		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
-		PLATFORM1_SURFACE.fill("brown")
+		PLATFORM1_SURFACE.fill("#574E35")
 		PLATFORM2_SURFACE = PLATFORM1_SURFACE.copy()
 		
 		PLATFORM1 = game.PlatformSprite(PLATFORM1_SURFACE, (0, 0))
@@ -422,7 +430,6 @@ class MainScene(Scene):
 		self.bar_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 11.25) if FULL_SCREEN else 15)
 		self.font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 21.25) if FULL_SCREEN else 25)
 		
-		
 
 	def start(self):
 		super().start()
@@ -433,7 +440,8 @@ class MainScene(Scene):
 		except FileNotFoundError as e:
 			print(str(e))
 		
-		self.rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
+		self.rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.5)
+
 
 	def run_loop(self):
 		super().run_loop()
@@ -450,14 +458,16 @@ class MainScene(Scene):
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
 
-		self.screen.fill("#171722")
+		self.screen.fill("#434389")
 		
 		keys = pygame.key.get_pressed()
 
 		self.rhythm_handler.update(self.player, pressed_dig)
 
+		self.player.handle_movement(keys, events, self.dt)
+		self.player.update_position_and_collision(self.dt)
 		try:
-			self.player.update(keys, events, self.dt, self.game_state)
+			self.player.handle_break_block(keys, events, self.game_state)
 		except ValueError as e:
 			if str(e) == "Inventory full":
 				self.inv_full_popup.trigger()
@@ -491,6 +501,8 @@ class MainScene(Scene):
 		self.inv_full_popup.rect.centery = self.player.get_rect().centery + cam_offset[1] - 50
 		self.exhausted_popup.rect.centerx = self.player.get_rect().centerx + cam_offset[0]
 		self.exhausted_popup.rect.centery = self.player.get_rect().centery + cam_offset[1] - 50
+
+		self.screen.blit(self.underground_surface, (round(MINE_POS[0] + cam_offset[0]), round(MINE_POS[1] + cam_offset[1])))
 
 		for block in self.game_state.get_block_group():
 			if block.image == None:
@@ -892,8 +904,8 @@ class GameOverScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 2 if FULL_SCREEN else 2
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "continue.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'continue_over.png'), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "new_game.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'new_game_over.png'), True)
 		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
 		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
 		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "game_over_logo.png"), True)

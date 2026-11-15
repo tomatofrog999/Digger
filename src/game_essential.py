@@ -658,6 +658,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 				elif d_pressed:
 					self.facing_direction = PlayerSprite.DirectionState.RIGHT
 
+		is_collide = False
 		if (j_pressed or k_pressed) and not_diagonally:
 			digging_offset_x = 0
 			digging_offset_y = 0
@@ -686,7 +687,6 @@ class PlayerSprite(pygame.sprite.Sprite):
 				elif self.facing_direction == PlayerSprite.DirectionState.RIGHT:
 					digging_offset_x += self.origin_break_block_point_x
 	
-			is_collide = False
 			srect = self.get_rect()
 			for _ in range(PlayerSprite.BREAK_BLOCK_DISTANCE):
 				for block in self.game_state.get_block_group():
@@ -723,7 +723,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 					digging_offset_x += extract_number_sign(digging_offset_x) * BLOCK_WIDTH
 				elif digging_offset_y != 0 and digging_offset_x == 0:
 					digging_offset_y += extract_number_sign(digging_offset_y) * BLOCK_HEIGHT
-		return True
+		return is_collide
 
 	def update(self, keys: pygame.key.ScancodeWrapper, events: list[pygame.Event], dt: float, game_state: GameState):
 		self.handle_movement(keys, events, dt)
@@ -816,10 +816,13 @@ class LayerData:
 	
 
 class MapData:
-	def __init__(self, layer_tuple: tuple[LayerData, ...], block_width: int, block_height: int):
+	def __init__(self, layer_tuple: tuple[LayerData, ...], block_width: int, block_height: int, bomb_surf: pygame.Surface, energy_surf: pygame.Surface, treasure_surf: pygame.Surface):
 		self.layer_tuple = tuple(sorted(layer_tuple, key=(lambda x: x.end_layer)))
 		self.block_width = block_width
 		self.block_height = block_height
+		self.bomb_surf = bomb_surf
+		self.energy_surf = energy_surf
+		self.treasure_surf = treasure_surf
 
 	def create_sprite_group(self, width: int, height: int, map_position: tuple[int, int], seed: int, ignored_block_index: list[tuple[int, int]] = []) -> pygame.sprite.Group[Block]:
 		# by set the seed it will make random after run again to be the same if set to the same seed
@@ -859,17 +862,11 @@ class MapData:
 					continue
 
 				if choosen == 0:
-					bomb_block = pygame.Surface((self.block_width, self.block_height))
-					bomb_block.fill("red")
-					block = BombBlock(bomb_block, (block_x + map_position[0], block_y + map_position[1]), False, False, layer.bomb_damage, layer.energy_usage)
+					block = BombBlock(self.bomb_surf, (block_x + map_position[0], block_y + map_position[1]), False, False, layer.bomb_damage, layer.energy_usage)
 				elif choosen == 1:
-					energy_block = pygame.Surface((self.block_width, self.block_height))
-					energy_block.fill("green")
-					block = EnergyBlock(energy_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.energy_addition, multi_block, layer.energy_usage)
+					block = EnergyBlock(self.energy_surf, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.energy_addition, multi_block, layer.energy_usage)
 				elif choosen == 2:
-					treasure_block = pygame.Surface((self.block_width, self.block_height))
-					treasure_block.fill("blue")
-					block = TreasureBlock(treasure_block, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.treasure_addition, multi_block, layer.energy_usage)
+					block = TreasureBlock(self.treasure_surf, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health / 2, False, False, layer.treasure_addition, multi_block, layer.energy_usage)
 				else:
 					block = Block(block_data.surface, (block_x + map_position[0], block_y + map_position[1]), block_data.max_health, False, False, multi_block, layer.energy_usage)
 				block.set_position_index((width_index, height_index))
@@ -913,7 +910,7 @@ class Camera:
 			self.y -= min(cam_distance_y, CAM_SPEED_SCALE * cam_distance_y * dt)
 
 class RhythmHandler:
-	LINE_WIDTH = 2
+	LINE_WIDTH = 4
 	def __init__(self, music_data_file: str, rhythm_error_margin_ms: int, width: int, height: int, rhythm_show_length_ms: int, wrong_press_cooldown_ms: int):
 		self.screen_width_per_rhythm_length = width / rhythm_show_length_ms
 		self.width = width
@@ -955,6 +952,7 @@ class RhythmHandler:
 		self.line_pos_ratio = -1.0
 		self.topleft_pos = (0, 0)
 		self.rhythm_show_length_ms = rhythm_show_length_ms
+		self.rhythm_bar_surface = pygame.Surface((width, height), pygame.SRCALPHA)
 
 	def init_screen(self, screen: pygame.Surface, line_pos_ratio: float, center_pos: tuple[int, int] = (0, 0)):
 		self.screen = screen
@@ -1026,15 +1024,7 @@ class RhythmHandler:
 
 	def draw(self):
 		screen = self.get_screen()
-		left, top = self.topleft_pos
-		point1 = (left, top)
-		point2 = (left + self.width, top)
-		point3 = (left, top + self.height)
-		point4 = (left + self.width, top + self.height)
-		pygame.draw.line(screen, "white", point1, point2, RhythmHandler.LINE_WIDTH)
-		pygame.draw.line(screen, "white", point1, point3, RhythmHandler.LINE_WIDTH)
-		pygame.draw.line(screen, "white", point2, point4, RhythmHandler.LINE_WIDTH)
-		pygame.draw.line(screen, "white", point3, point4, RhythmHandler.LINE_WIDTH)
+		self.rhythm_bar_surface.fill((0, 0, 0, 0))
 		for i in range(len(self.rhythm_surface_tuple)):
 			# "refined_rhythm_time[i][0] - current_music_time" is delta time between start position of rhythm and current music time
 			dt_rhythm_start = self.rhythm_bound_tuple[i][0] - self.current_music_time
@@ -1046,7 +1036,17 @@ class RhythmHandler:
 			if dt_rhythm_end < -self.rhythm_show_length_ms * self.line_pos_ratio:
 				continue
 			rhythm_position = dt_rhythm_start * self.screen_width_per_rhythm_length
-			screen.blit(self.rhythm_surface_tuple[i], (rhythm_position + self.line_offset_x + self.topleft_pos[0], self.topleft_pos[1]))
+			self.rhythm_bar_surface.blit(self.rhythm_surface_tuple[i], (rhythm_position + self.line_offset_x, 0))
+		screen.blit(self.rhythm_bar_surface, self.topleft_pos)
+		left, top = self.topleft_pos
+		point1 = (left, top)
+		point2 = (left + self.width, top)
+		point3 = (left, top + self.height)
+		point4 = (left + self.width, top + self.height)
+		pygame.draw.line(screen, "white", point1, point2, RhythmHandler.LINE_WIDTH)
+		pygame.draw.line(screen, "white", point1, point3, RhythmHandler.LINE_WIDTH)
+		pygame.draw.line(screen, "white", point2, point4, RhythmHandler.LINE_WIDTH)
+		pygame.draw.line(screen, "white", point3, point4, RhythmHandler.LINE_WIDTH)
 
 		pygame.draw.line(screen, "white", (self.line_offset_x + self.topleft_pos[0], self.topleft_pos[1]), (self.line_offset_x + self.topleft_pos[0], self.height + self.topleft_pos[1]), RhythmHandler.LINE_WIDTH)
 
