@@ -56,8 +56,10 @@ pip install -r requirements.txt
 pip install -r requirements_tool.txt
 ```
 
-## How to Run
+## Demo
+ https://youtu.be/ZtiF1KLWSS8?si=-YSLSQpCmYkXjrgw
 
 ```bash
 python main.py
 ```
+
