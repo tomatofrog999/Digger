@@ -144,7 +144,7 @@ class MainMenuScene(Scene):
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager):
 		super().__init__(screen, scene_manager)
 
-		NEW_GAME_Y = round(SCREEN_HEIGHT / 1.75)
+		NEW_GAME_Y = round(SCREEN_HEIGHT / 1.775)
 		PLAY_BTN_Y = round(SCREEN_HEIGHT / 1.45)
 		EXIT_BTN_Y = round(SCREEN_HEIGHT / 1.225)
 		LOGO_Y = round(SCREEN_HEIGHT / 2.85)
@@ -320,11 +320,11 @@ class MainScene(Scene):
 		BLOCK5_SURFACE = game.scale_surface(BLOCK5_SURFACE, BLOCK_WIDTH / BLOCK5_SURFACE.size[0])
 		BLOCK5_DATA = game.BlockData(BLOCK5_SURFACE, 20.0, 0.15)
 		
-		BLOCK6_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block5.png"), False)
-		BLOCK6_SURFACE = game.scale_surface(BLOCK3_SURFACE, BLOCK_WIDTH / BLOCK3_SURFACE.size[0])
+		BLOCK6_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block6.png"), False)
+		BLOCK6_SURFACE = game.scale_surface(BLOCK6_SURFACE, BLOCK_WIDTH / BLOCK6_SURFACE.size[0])
 		BLOCK6_DATA = game.BlockData(BLOCK6_SURFACE, 35.0, 0.75)
 
-		BLOCK7_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block5.png"), False)
+		BLOCK7_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block7.png"), False)
 		BLOCK7_SURFACE = game.scale_surface(BLOCK7_SURFACE, BLOCK_WIDTH / BLOCK7_SURFACE.size[0])
 		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.1)
 		
@@ -420,8 +420,8 @@ class MainScene(Scene):
 		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)	
 
 		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, border_surf, hp_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.05)), BAR_SCALE, ICON_SCALE)
-		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.13)), BAR_SCALE, ICON_SCALE)
-		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.21)), BAR_SCALE, ICON_SCALE)
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.15)), BAR_SCALE, ICON_SCALE)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.25)), BAR_SCALE, ICON_SCALE)
 
 		self.money_icon = ui.ScalableDisplay(self.screen, (round(SCREEN_WIDTH * 0.87),round(SCREEN_HEIGHT * 0.07)), money_icon_surf, ICON_SCALE)
 
@@ -599,7 +599,7 @@ class ShopScene(Scene):
 		UP4_X = SCREEN_WIDTH * 0.51375
 		UP_Y = SCREEN_HEIGHT * 0.285
 		self.NAME_POS = (SCREEN_WIDTH * 0.375, SCREEN_HEIGHT * 0.675)
-		self.INFO_POS = (SCREEN_WIDTH * 0.375 , SCREEN_HEIGHT * 0.74)
+		self.INFO_POS = (SCREEN_WIDTH * 0.375 , SCREEN_HEIGHT * 0.77)
 		
 		BUTTON_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 4 if FULL_SCREEN else 4
 		UP_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.15 if FULL_SCREEN else 0.1
@@ -633,7 +633,7 @@ class ShopScene(Scene):
 		dealer = ui.ScalableDisplay(screen, DEALER_POS, dealer_surf, DEALER_SCALE, "topright")
 		
 		UI_BG_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 1.33 if FULL_SCREEN else 1
-		UI_BG_SIZE_X = 500 * UI_BG_SCALE
+		UI_BG_SIZE_X = 300 * UI_BG_SCALE
 		UI_BG_SIZE_Y = 110 * UI_BG_SCALE
 		
 		self.ui_bg = pygame.Surface((UI_BG_SIZE_X, UI_BG_SIZE_Y))
@@ -641,7 +641,7 @@ class ShopScene(Scene):
 		self.ui_bg_border = pygame.Surface((UI_BG_SIZE_X + 7, UI_BG_SIZE_Y + 7))
 		self.ui_bg_border.fill(WHITE)
 
-		self.ui_bg_rect = self.ui_bg.get_rect(topleft=(SCREEN_WIDTH*0.06,SCREEN_HEIGHT*0.64))
+		self.ui_bg_rect = self.ui_bg.get_rect(topleft=(SCREEN_WIDTH*0.15,SCREEN_HEIGHT*0.64))
 		self.ui_bg_border_rect = self.ui_bg_border.get_rect(center = self.ui_bg_rect.center)
 
 		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)
@@ -770,8 +770,8 @@ class BarScene(Scene):
 		stash_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "stash_icon.png"), True)
 
 		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, border_surf, hp_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.05)), BAR_SCALE, ICON_SCALE)
-		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.13)), BAR_SCALE, ICON_SCALE)
-		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.21)), BAR_SCALE, ICON_SCALE)	
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.15)), BAR_SCALE, ICON_SCALE)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.25)), BAR_SCALE, ICON_SCALE)	
 
 		self.bar_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 11.25) if FULL_SCREEN else 15)
 		self.font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 21.25) if FULL_SCREEN else 25)

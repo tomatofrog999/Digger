@@ -100,7 +100,7 @@ BLACK = "#000000"
 ICON_SCALE = (SCREEN_WIDTH/SCREEN_HEIGHT*0.06,SCREEN_WIDTH/SCREEN_HEIGHT * 0.05) if FULL_SCREEN else(0.06, 0.05)
 BAR_SCALE = (SCREEN_WIDTH/SCREEN_HEIGHT*0.1, SCREEN_WIDTH/SCREEN_HEIGHT * 0.1) if FULL_SCREEN else(0.1, 0.1)
 
-PLAYER_INFO_POS = (round(SCREEN_WIDTH * 0.7375), round(SCREEN_HEIGHT * 0.55)) if FULL_SCREEN else (590, 300)
+PLAYER_INFO_POS = (round(SCREEN_WIDTH * 0.7375), round(SCREEN_HEIGHT * 0.65)) if FULL_SCREEN else (590, 300)
 
 if __name__ == "__main__":
 	raise RuntimeError("This file cannot be execute directly. This file only work when imported.")
