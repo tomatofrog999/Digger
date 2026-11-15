@@ -328,7 +328,7 @@ class MainScene(Scene):
 		BLOCK7_SURFACE = game.scale_surface(BLOCK7_SURFACE, BLOCK_WIDTH / BLOCK7_SURFACE.size[0])
 		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.1)
 		
-		LAYER3_DATA = game.LayerData(60, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.15, 3).init_energy(0.05, 80) \
+		LAYER3_DATA = game.LayerData(60, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.1, 3).init_energy(0.05, 80) \
 					.init_treasure(0.05, 80).init_multiblock_rate(0.04).init_energy_usage(4)
 		LAYER3_DATA.check_init()
 		
@@ -462,7 +462,7 @@ class MainScene(Scene):
 		keys = pygame.key.get_pressed()
 
 		self.rhythm_handler.update(self.player, pressed_dig)
-		
+
 		try:
 			self.player.update(keys, events,self.dt, self.game_state)
 		except ValueError as e:
