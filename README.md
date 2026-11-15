@@ -44,13 +44,13 @@ But be careful! The deeper you go, the more challenging things become. Dangerous
 
 ## Installation
 
-### 1. Install the base game dependencies
+### Install the base game dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Install the tool dependencies
+### Install the tool dependencies
 
 ```bash
 pip install -r requirements_tool.txt

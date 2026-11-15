@@ -144,7 +144,7 @@ class MainMenuScene(Scene):
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager):
 		super().__init__(screen, scene_manager)
 
-		NEW_GAME_Y = round(SCREEN_HEIGHT / 1.75)
+		NEW_GAME_Y = round(SCREEN_HEIGHT / 1.775)
 		PLAY_BTN_Y = round(SCREEN_HEIGHT / 1.45)
 		EXIT_BTN_Y = round(SCREEN_HEIGHT / 1.225)
 		LOGO_Y = round(SCREEN_HEIGHT / 2.85)
@@ -289,58 +289,64 @@ class MainScene(Scene):
 		self.player_stats = player_stats
 
 		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "break_effect.png"), True)
-		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.png"), True)
-		# Layer 1
-		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "grassCenter")
-		BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], (BLOCK_WIDTH / BLOCK1_SURFACE_DATA[1][0]), False)
+		BLOCK1_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block1.png"), False)
+		BLOCK1_SURFACE = game.scale_surface(BLOCK1_SURFACE, BLOCK_WIDTH / BLOCK1_SURFACE.size[0])
 		BLOCK1_DATA = game.BlockData(BLOCK1_SURFACE, 3.0, 0.8)
 		
-		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "stoneCenter")
-		BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], (BLOCK_WIDTH / BLOCK2_SURFACE_DATA[1][0]), False)
+		BLOCK2_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block2.png"), False)
+		BLOCK2_SURFACE = game.scale_surface(BLOCK2_SURFACE, BLOCK_WIDTH / BLOCK2_SURFACE.size[0])
 		BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 		
-		LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20) \
-					.init_treasure(0.01, 10).init_multiblock_rate(0.01).init_energy_usage(1)
+		LAYER1_DATA = game.LayerData(20, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.055, 1).init_energy(0.04, 20) \
+					.init_treasure(0.03, 10).init_multiblock_rate(0.01).init_energy_usage(1)
 		LAYER1_DATA.check_init()
 		
 		
 		# Layer 2
-		BLOCK3_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK3_SURFACE.fill("orange")
+		BLOCK3_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block3.png"), False)
+		BLOCK3_SURFACE = game.scale_surface(BLOCK3_SURFACE, BLOCK_WIDTH / BLOCK3_SURFACE.size[0])
 		BLOCK3_DATA = game.BlockData(BLOCK3_SURFACE, 10.0, 0.6)
 		
-		BLOCK4_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK4_SURFACE.fill("pink")
+		BLOCK4_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block4.png"), False)
+		BLOCK4_SURFACE = game.scale_surface(BLOCK4_SURFACE, BLOCK_WIDTH / BLOCK4_SURFACE.size[0])
 		BLOCK4_DATA = game.BlockData(BLOCK4_SURFACE, 15.0, 0.4)
 		
-		LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.06, 2).init_energy(0.03, 40) \
-					.init_treasure(0.015, 30).init_multiblock_rate(0.02).init_energy_usage(2)
+		LAYER2_DATA = game.LayerData(35, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.06, 2).init_energy(0.05, 40) \
+					.init_treasure(0.04, 30).init_multiblock_rate(0.02).init_energy_usage(2)
 		LAYER2_DATA.check_init()
 		
 		# Layer 3
-		BLOCK5_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK5_SURFACE.fill("darkorchid1")
+		BLOCK5_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block5.png"), False)
+		BLOCK5_SURFACE = game.scale_surface(BLOCK5_SURFACE, BLOCK_WIDTH / BLOCK5_SURFACE.size[0])
 		BLOCK5_DATA = game.BlockData(BLOCK5_SURFACE, 20.0, 0.15)
 		
-		BLOCK6_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK6_SURFACE.fill("darkmagenta")
-		BLOCK6_DATA = game.BlockData(BLOCK6_SURFACE, 35.0, 0.8)
+		BLOCK6_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block6.png"), False)
+		BLOCK6_SURFACE = game.scale_surface(BLOCK6_SURFACE, BLOCK_WIDTH / BLOCK6_SURFACE.size[0])
+		BLOCK6_DATA = game.BlockData(BLOCK6_SURFACE, 35.0, 0.75)
+
+		BLOCK7_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block7.png"), False)
+		BLOCK7_SURFACE = game.scale_surface(BLOCK7_SURFACE, BLOCK_WIDTH / BLOCK7_SURFACE.size[0])
+		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.1)
 		
-		BLOCK7_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK7_SURFACE.fill("plum2")
-		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.05)
-		
-		LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.15, 3).init_energy(0.07, 80) \
-					.init_treasure(0.05, 80).init_multiblock_rate(0.03).init_energy_usage(4)
+		LAYER3_DATA = game.LayerData(60, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.1, 3).init_energy(0.05, 80) \
+					.init_treasure(0.05, 80).init_multiblock_rate(0.04).init_energy_usage(4)
 		LAYER3_DATA.check_init()
 		
-		
-		MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT)
+		BOMB_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "bomb_block.png"), False)
+		BOMB_SURFACE = game.scale_surface(BOMB_SURFACE, BLOCK_WIDTH / BOMB_SURFACE.size[0])
+		ENERGY_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "energy_block.png"), False)
+		ENERGY_SURFACE = game.scale_surface(ENERGY_SURFACE, BLOCK_WIDTH / ENERGY_SURFACE.size[0])
+		TREASURE_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "treasure_block.png"), False)
+		TREASURE_SURFACE = game.scale_surface(TREASURE_SURFACE, BLOCK_WIDTH / TREASURE_SURFACE.size[0])
+		MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT, BOMB_SURFACE, ENERGY_SURFACE, TREASURE_SURFACE)
+
+		self.underground_surface = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
+		self.underground_surface.fill("#2A2319")
 		
 		self.platform_group = pygame.sprite.Group()
 		
 		PLATFORM1_SURFACE = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH * 4, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
-		PLATFORM1_SURFACE.fill("brown")
+		PLATFORM1_SURFACE.fill("#574E35")
 		PLATFORM2_SURFACE = PLATFORM1_SURFACE.copy()
 		
 		PLATFORM1 = game.PlatformSprite(PLATFORM1_SURFACE, (0, 0))
@@ -414,14 +420,14 @@ class MainScene(Scene):
 		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)	
 
 		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, border_surf, hp_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.05)), BAR_SCALE, ICON_SCALE)
-		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.13)), BAR_SCALE, ICON_SCALE)
-		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.21)), BAR_SCALE, ICON_SCALE)
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.15)), BAR_SCALE, ICON_SCALE)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT * 0.25)), BAR_SCALE, ICON_SCALE)
 
 		self.money_icon = ui.ScalableDisplay(self.screen, (round(SCREEN_WIDTH * 0.87),round(SCREEN_HEIGHT * 0.07)), money_icon_surf, ICON_SCALE)
 
 		self.bar_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 11.25) if FULL_SCREEN else 15)
 		self.font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 21.25) if FULL_SCREEN else 25)
-		
+		self.end_block_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), 70)
 		
 
 	def start(self):
@@ -433,7 +439,8 @@ class MainScene(Scene):
 		except FileNotFoundError as e:
 			print(str(e))
 		
-		self.rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.7)
+		self.rhythm_handler.start(os.path.join(MUSIC_PATH, r"separated\htdemucs\bad_apple\drums.flac"), 0.5)
+
 
 	def run_loop(self):
 		super().run_loop()
@@ -450,14 +457,14 @@ class MainScene(Scene):
 				if event.key in (pygame.K_j, pygame.K_k):
 					pressed_dig = True
 
-		self.screen.fill("#171722")
+		self.screen.fill("#434389")
 		
 		keys = pygame.key.get_pressed()
 
 		self.rhythm_handler.update(self.player, pressed_dig)
 
 		try:
-			self.player.update(keys, events, self.dt, self.game_state)
+			self.player.update(keys, events,self.dt, self.game_state)
 		except ValueError as e:
 			if str(e) == "Inventory full":
 				self.inv_full_popup.trigger()
@@ -492,14 +499,21 @@ class MainScene(Scene):
 		self.exhausted_popup.rect.centerx = self.player.get_rect().centerx + cam_offset[0]
 		self.exhausted_popup.rect.centery = self.player.get_rect().centery + cam_offset[1] - 50
 
+		self.screen.blit(self.underground_surface, (round(MINE_POS[0] + cam_offset[0]), round(MINE_POS[1] + cam_offset[1])))
+
 		for block in self.game_state.get_block_group():
 			if block.image == None:
 				raise TypeError("'image' variable cannot be None type.")
 			self.screen.blit(block.image, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
 			if block.damage_taken > 0:
-				break_level = math.floor(block.damage_taken / block.max_health * BREAK_EFFECT_LENGTH)
-				temp_surf = game.get_surface_from_sprite_sheet(self.break_effect_sheet, (break_level, 0), (BREAK_EFFECT_WIDTH, BREAK_EFFECT_WIDTH), block.get_rect().size[0] / BREAK_EFFECT_WIDTH, True)
-				self.screen.blit(temp_surf, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
+				if not isinstance(block, game.EndBlock):
+					break_level = math.floor(block.damage_taken / block.max_health * BREAK_EFFECT_LENGTH)
+					temp_surf = game.get_surface_from_sprite_sheet(self.break_effect_sheet, (break_level, 0), (BREAK_EFFECT_WIDTH, BREAK_EFFECT_WIDTH), (block.get_rect().size[0] / BREAK_EFFECT_WIDTH, block.get_rect().size[1] / BREAK_EFFECT_WIDTH), True)
+					self.screen.blit(temp_surf, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
+			if isinstance(block, game.EndBlock):
+				break_info = self.end_block_font.render(f"{block.damage_taken:.2f}/{block.max_health:.2f}", True, WHITE)
+				break_rect = break_info.get_rect(center = (block.get_rect().centerx + cam_offset[0], block.get_rect().centery + cam_offset[1]))
+				self.screen.blit(break_info, break_rect)
 
 		for platform in self.platform_group:
 			if platform.image == None:
@@ -564,7 +578,7 @@ class ShopScene(Scene):
 	STASH_START_COST = 15
 	ENERGY_START_COST = 20
 	HEALTH_START_COST = 45
-	ITEM_COST_MULTIPLIER = 0.75
+	ITEM_COST_MULTIPLIER = 0.8
 	SHOVEL_NAME_TEXT = "Shovel Upgrade"
 	SHOVEL_INFO_TEXT = "+1 Break Damage"
 	STASH_NAME_TEXT = "Inventory Upgrade"
@@ -585,7 +599,7 @@ class ShopScene(Scene):
 		UP4_X = SCREEN_WIDTH * 0.51375
 		UP_Y = SCREEN_HEIGHT * 0.285
 		self.NAME_POS = (SCREEN_WIDTH * 0.375, SCREEN_HEIGHT * 0.675)
-		self.INFO_POS = (SCREEN_WIDTH * 0.375 , SCREEN_HEIGHT * 0.74)
+		self.INFO_POS = (SCREEN_WIDTH * 0.375 , SCREEN_HEIGHT * 0.77)
 		
 		BUTTON_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 4 if FULL_SCREEN else 4
 		UP_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 0.15 if FULL_SCREEN else 0.1
@@ -619,7 +633,7 @@ class ShopScene(Scene):
 		dealer = ui.ScalableDisplay(screen, DEALER_POS, dealer_surf, DEALER_SCALE, "topright")
 		
 		UI_BG_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 1.33 if FULL_SCREEN else 1
-		UI_BG_SIZE_X = 500 * UI_BG_SCALE
+		UI_BG_SIZE_X = 300 * UI_BG_SCALE
 		UI_BG_SIZE_Y = 110 * UI_BG_SCALE
 		
 		self.ui_bg = pygame.Surface((UI_BG_SIZE_X, UI_BG_SIZE_Y))
@@ -627,7 +641,7 @@ class ShopScene(Scene):
 		self.ui_bg_border = pygame.Surface((UI_BG_SIZE_X + 7, UI_BG_SIZE_Y + 7))
 		self.ui_bg_border.fill(WHITE)
 
-		self.ui_bg_rect = self.ui_bg.get_rect(topleft=(SCREEN_WIDTH*0.06,SCREEN_HEIGHT*0.64))
+		self.ui_bg_rect = self.ui_bg.get_rect(topleft=(SCREEN_WIDTH*0.15,SCREEN_HEIGHT*0.64))
 		self.ui_bg_border_rect = self.ui_bg_border.get_rect(center = self.ui_bg_rect.center)
 
 		money_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "gem_icon.png"), True)
@@ -739,7 +753,7 @@ class ShopScene(Scene):
 class BarScene(Scene):
 	ENERGY_REFILL_COST = 10
 	HEALTH_REFILL_COST = 55
-	REFILL_COST_MULTIPLIER = 0.8
+	REFILL_COST_MULTIPLIER = 0.85
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats
@@ -756,8 +770,8 @@ class BarScene(Scene):
 		stash_icon_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "stash_icon.png"), True)
 
 		self.hp_bar = ui.Bar(self.screen, base_surf, hp_over_surf, border_surf, hp_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.05)), BAR_SCALE, ICON_SCALE)
-		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.13)), BAR_SCALE, ICON_SCALE)
-		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.21)), BAR_SCALE, ICON_SCALE)	
+		self.energy_bar = ui.Bar(self.screen, base_surf, energy_over_surf, border_surf, energy_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.15)), BAR_SCALE, ICON_SCALE)
+		self.stash_bar = ui.Bar(self.screen, base_surf, stash_over_surf, border_surf, stash_icon_surf, (BAR_POS_X, round(SCREEN_HEIGHT*0.25)), BAR_SCALE, ICON_SCALE)	
 
 		self.bar_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 11.25) if FULL_SCREEN else 15)
 		self.font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 21.25) if FULL_SCREEN else 25)
@@ -892,8 +906,8 @@ class GameOverScene(Scene):
 		LOGO_SCALE = SCREEN_WIDTH / SCREEN_HEIGHT * 2 if FULL_SCREEN else 2
 
 		# Main Menu
-		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "continue.png"), True)
-		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'continue_over.png'), True)
+		play_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "new_game.png"), True)
+		play_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, 'new_game_over.png'), True)
 		exit_up_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit.png"), True)
 		exit_over_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "exit_over.png"), True)
 		logo_surf = game.load_picture(os.path.join(IMAGE_UI_PATH, "game_over_logo.png"), True)
