@@ -289,57 +289,55 @@ class MainScene(Scene):
 		self.player_stats = player_stats
 
 		self.break_effect_sheet = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "break_effect.png"), True)
-		SPRITE_SHEET_SURFACE = game.load_picture(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.png"), True)
-		# Layer 1
-		BLOCK1_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "grassCenter")
-		BLOCK1_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK1_SURFACE_DATA[0], BLOCK1_SURFACE_DATA[1], (BLOCK_WIDTH / BLOCK1_SURFACE_DATA[1][0]), False)
+		BLOCK1_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block1.png"), False)
+		BLOCK1_SURFACE = game.scale_surface(BLOCK1_SURFACE, BLOCK_WIDTH / BLOCK1_SURFACE.size[0])
 		BLOCK1_DATA = game.BlockData(BLOCK1_SURFACE, 3.0, 0.8)
 		
-		BLOCK2_SURFACE_DATA = game.get_spritesheet_data(os.path.join(IMAGE_MAIN_PATH, "tiles_spritesheet.txt"), "stoneCenter")
-		BLOCK2_SURFACE = game.get_surface_from_sprite_sheet2(SPRITE_SHEET_SURFACE, BLOCK2_SURFACE_DATA[0], BLOCK2_SURFACE_DATA[1], (BLOCK_WIDTH / BLOCK2_SURFACE_DATA[1][0]), False)
+		BLOCK2_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block2.png"), False)
+		BLOCK2_SURFACE = game.scale_surface(BLOCK2_SURFACE, BLOCK_WIDTH / BLOCK2_SURFACE.size[0])
 		BLOCK2_DATA = game.BlockData(BLOCK2_SURFACE, 6.0, 0.2)
 		
-		LAYER1_DATA = game.LayerData(10, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.05, 1).init_energy(0.02, 20) \
-					.init_treasure(0.01, 10).init_multiblock_rate(0.01).init_energy_usage(1)
+		LAYER1_DATA = game.LayerData(20, (BLOCK1_DATA, BLOCK2_DATA)).init_bomb(0.055, 1).init_energy(0.04, 20) \
+					.init_treasure(0.03, 10).init_multiblock_rate(0.01).init_energy_usage(1)
 		LAYER1_DATA.check_init()
 		
 		
 		# Layer 2
-		BLOCK3_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK3_SURFACE.fill("orange")
+		BLOCK3_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block3.png"), False)
+		BLOCK3_SURFACE = game.scale_surface(BLOCK3_SURFACE, BLOCK_WIDTH / BLOCK3_SURFACE.size[0])
 		BLOCK3_DATA = game.BlockData(BLOCK3_SURFACE, 10.0, 0.6)
 		
-		BLOCK4_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK4_SURFACE.fill("pink")
+		BLOCK4_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block4.png"), False)
+		BLOCK4_SURFACE = game.scale_surface(BLOCK4_SURFACE, BLOCK_WIDTH / BLOCK4_SURFACE.size[0])
 		BLOCK4_DATA = game.BlockData(BLOCK4_SURFACE, 15.0, 0.4)
 		
-		LAYER2_DATA = game.LayerData(25, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.06, 2).init_energy(0.03, 40) \
-					.init_treasure(0.015, 30).init_multiblock_rate(0.02).init_energy_usage(2)
+		LAYER2_DATA = game.LayerData(35, (BLOCK3_DATA, BLOCK4_DATA)).init_bomb(0.06, 2).init_energy(0.05, 40) \
+					.init_treasure(0.04, 30).init_multiblock_rate(0.02).init_energy_usage(2)
 		LAYER2_DATA.check_init()
 		
 		# Layer 3
-		BLOCK5_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK5_SURFACE.fill("darkorchid1")
+		BLOCK5_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block5.png"), False)
+		BLOCK5_SURFACE = game.scale_surface(BLOCK5_SURFACE, BLOCK_WIDTH / BLOCK5_SURFACE.size[0])
 		BLOCK5_DATA = game.BlockData(BLOCK5_SURFACE, 20.0, 0.15)
 		
-		BLOCK6_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK6_SURFACE.fill("darkmagenta")
-		BLOCK6_DATA = game.BlockData(BLOCK6_SURFACE, 35.0, 0.8)
+		BLOCK6_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block5.png"), False)
+		BLOCK6_SURFACE = game.scale_surface(BLOCK3_SURFACE, BLOCK_WIDTH / BLOCK3_SURFACE.size[0])
+		BLOCK6_DATA = game.BlockData(BLOCK6_SURFACE, 35.0, 0.75)
+
+		BLOCK7_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "block5.png"), False)
+		BLOCK7_SURFACE = game.scale_surface(BLOCK7_SURFACE, BLOCK_WIDTH / BLOCK7_SURFACE.size[0])
+		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.1)
 		
-		BLOCK7_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BLOCK7_SURFACE.fill("plum2")
-		BLOCK7_DATA = game.BlockData(BLOCK7_SURFACE, 40.0, 0.05)
-		
-		LAYER3_DATA = game.LayerData(50, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.15, 3).init_energy(0.07, 80) \
-					.init_treasure(0.05, 80).init_multiblock_rate(0.03).init_energy_usage(4)
+		LAYER3_DATA = game.LayerData(60, (BLOCK5_DATA, BLOCK6_DATA, BLOCK7_DATA)).init_bomb(0.15, 3).init_energy(0.05, 80) \
+					.init_treasure(0.05, 80).init_multiblock_rate(0.04).init_energy_usage(4)
 		LAYER3_DATA.check_init()
 		
-		BOMB_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		BOMB_SURFACE.fill("red")
-		ENERGY_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		ENERGY_SURFACE.fill("green")
-		TREASURE_SURFACE = pygame.Surface((BLOCK_WIDTH, BLOCK_HEIGHT))
-		TREASURE_SURFACE.fill("blue")
+		BOMB_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "bomb_block.png"), False)
+		BOMB_SURFACE = game.scale_surface(BOMB_SURFACE, BLOCK_WIDTH / BOMB_SURFACE.size[0])
+		ENERGY_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "energy_block.png"), False)
+		ENERGY_SURFACE = game.scale_surface(ENERGY_SURFACE, BLOCK_WIDTH / ENERGY_SURFACE.size[0])
+		TREASURE_SURFACE = game.load_picture(os.path.join(IMAGE_BLOCK_PATH, "treasure_block.png"), False)
+		TREASURE_SURFACE = game.scale_surface(TREASURE_SURFACE, BLOCK_WIDTH / TREASURE_SURFACE.size[0])
 		MAP1_DATA = game.MapData((LAYER1_DATA, LAYER2_DATA, LAYER3_DATA), BLOCK_WIDTH, BLOCK_HEIGHT, BOMB_SURFACE, ENERGY_SURFACE, TREASURE_SURFACE)
 
 		self.underground_surface = pygame.Surface((BLOCK_WIDTH * BLOCK_PER_WIDTH, BLOCK_HEIGHT * (BLOCK_PER_HEIGHT + 4)))
@@ -429,6 +427,7 @@ class MainScene(Scene):
 
 		self.bar_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 11.25) if FULL_SCREEN else 15)
 		self.font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), round(SCREEN_WIDTH/SCREEN_HEIGHT * 21.25) if FULL_SCREEN else 25)
+		self.end_block_font = pygame.font.Font(os.path.join(FONT_PATH, "Tiny5.ttf"), 70)
 		
 
 	def start(self):
@@ -463,11 +462,9 @@ class MainScene(Scene):
 		keys = pygame.key.get_pressed()
 
 		self.rhythm_handler.update(self.player, pressed_dig)
-
-		self.player.handle_movement(keys, events, self.dt)
-		self.player.update_position_and_collision(self.dt)
+		
 		try:
-			self.player.handle_break_block(keys, events, self.game_state)
+			self.player.update(keys, events,self.dt, self.game_state)
 		except ValueError as e:
 			if str(e) == "Inventory full":
 				self.inv_full_popup.trigger()
@@ -509,9 +506,14 @@ class MainScene(Scene):
 				raise TypeError("'image' variable cannot be None type.")
 			self.screen.blit(block.image, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
 			if block.damage_taken > 0:
-				break_level = math.floor(block.damage_taken / block.max_health * BREAK_EFFECT_LENGTH)
-				temp_surf = game.get_surface_from_sprite_sheet(self.break_effect_sheet, (break_level, 0), (BREAK_EFFECT_WIDTH, BREAK_EFFECT_WIDTH), block.get_rect().size[0] / BREAK_EFFECT_WIDTH, True)
-				self.screen.blit(temp_surf, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
+				if not isinstance(block, game.EndBlock):
+					break_level = math.floor(block.damage_taken / block.max_health * BREAK_EFFECT_LENGTH)
+					temp_surf = game.get_surface_from_sprite_sheet(self.break_effect_sheet, (break_level, 0), (BREAK_EFFECT_WIDTH, BREAK_EFFECT_WIDTH), (block.get_rect().size[0] / BREAK_EFFECT_WIDTH, block.get_rect().size[1] / BREAK_EFFECT_WIDTH), True)
+					self.screen.blit(temp_surf, (round(block.get_rect().x + cam_offset[0]), round(block.get_rect().y + cam_offset[1])))
+			if isinstance(block, game.EndBlock):
+				break_info = self.end_block_font.render(f"{block.damage_taken:.2f}/{block.max_health:.2f}", True, WHITE)
+				break_rect = break_info.get_rect(center = (block.get_rect().centerx + cam_offset[0], block.get_rect().centery + cam_offset[1]))
+				self.screen.blit(break_info, break_rect)
 
 		for platform in self.platform_group:
 			if platform.image == None:
@@ -576,7 +578,7 @@ class ShopScene(Scene):
 	STASH_START_COST = 15
 	ENERGY_START_COST = 20
 	HEALTH_START_COST = 45
-	ITEM_COST_MULTIPLIER = 0.75
+	ITEM_COST_MULTIPLIER = 0.8
 	SHOVEL_NAME_TEXT = "Shovel Upgrade"
 	SHOVEL_INFO_TEXT = "+1 Break Damage"
 	STASH_NAME_TEXT = "Inventory Upgrade"
@@ -751,7 +753,7 @@ class ShopScene(Scene):
 class BarScene(Scene):
 	ENERGY_REFILL_COST = 10
 	HEALTH_REFILL_COST = 55
-	REFILL_COST_MULTIPLIER = 0.8
+	REFILL_COST_MULTIPLIER = 0.85
 	def __init__(self, screen: pygame.Surface, scene_manager: SceneManager, player_stats: game.PlayerStats):
 		super().__init__(screen, scene_manager)
 		self.player_stats = player_stats

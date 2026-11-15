@@ -875,7 +875,7 @@ class MapData:
 			block_y += self.block_height
 		block_x = 0
 		end_block = pygame.Surface((self.block_width * width, self.block_height * 4))
-		end_block.fill("green")
+		end_block.fill("#49880E")
 		block = EndBlock(end_block, (block_x + map_position[0], block_y + map_position[1]), sorted(layer.block_tuple, key=lambda x: x.max_health)[0].max_health * width, False, False, layer.treasure_addition * width, layer.energy_usage)
 		block_group.add(block)
 		return block_group
@@ -1065,14 +1065,14 @@ class GameState:
 			self.seed = seed
 
 	def increase_map_difficulty(self, time: int = 1):
-		for _ in range(time):
-			for layer in self.game_map.layer_tuple:
-				layer.bomb_damage = round(layer.bomb_damage * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				layer.energy_usage = round(layer.energy_usage * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				layer.energy_addition = round(layer.energy_addition * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				layer.treasure_addition = round(layer.treasure_addition * SCENE_FINISHED_HARDNESS_MULTIPLIER)
-				for block in layer.block_tuple:
-					block.max_health = round(block.max_health * SCENE_FINISHED_HARDNESS_MULTIPLIER)
+		for layer in self.game_map.layer_tuple:
+			layer.bomb_damage = round(layer.bomb_damage * (1 + time * SCENE_FINISHED_BOMB_DAMAGE_MULTIPLIER))
+			layer.energy_usage = round(layer.energy_usage * (1 + time * SCENE_FINISHED_ENERGY_USAGE_MULTIPLIER))
+			layer.energy_addition = round(layer.energy_addition * (1 + time * SCENE_FINISHED_ENERGY_ADDITION_MULTIPLIER))
+			layer.treasure_addition = round(layer.treasure_addition * (1 + time * SCENE_FINISHED_TREASURE_ADDITION_MULTIPLIER))
+			for block in layer.block_tuple:
+				block.max_health = round(block.max_health * (1 + time * SCENE_FINISHED_BLOCK_HEALTH_MULTIPLIER))
+
 
 	def init_block_group(self, block_group: pygame.sprite.Group):
 		self.block_group = block_group
@@ -1216,7 +1216,7 @@ def get_spritesheet_data(target_file: str, name: str) -> tuple[tuple[int, int], 
 				return((int(key[1]), int(key[2])), (int(key[3]), int(key[4])))
 	raise ValueError("Name not found from targeted file.")
 
-def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: tuple[int, int], size_per_image: tuple[int, int], scale: float | int, is_transparent: bool):
+def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: tuple[int, int], size_per_image: tuple[int, int], scale: float | int | tuple[int | float, int | float], is_transparent: bool):
 	width, height = size_per_image
 	if is_transparent:
 		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
@@ -1226,7 +1226,7 @@ def get_surface_from_sprite_sheet(sprite_sheet_surface: pygame.Surface, index: t
 	image = scale_surface(image, scale)
 	return image
 
-def get_surface_from_sprite_sheet2(sprite_sheet_surface: pygame.Surface, start_point: tuple[int, int], size_per_image: tuple[int, int], scale: float | int, is_transparent: bool):
+def get_surface_from_sprite_sheet2(sprite_sheet_surface: pygame.Surface, start_point: tuple[int, int], size_per_image: tuple[int, int], scale: float | int | tuple[int | float, int | float], is_transparent: bool):
 	if is_transparent:
 		image = pygame.Surface(size_per_image, pygame.SRCALPHA)
 	else:
